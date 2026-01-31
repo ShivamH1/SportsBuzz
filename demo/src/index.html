@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Web Socket Demo</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        background-color: #000000;
+        color: #ffffff;
+      }
+      .status-off {
+        color: #ff0000;
+      }
+      .status-on {
+        color: #00ff00;
+      }
+      #message-form {
+        margin: 20px auto;
+        width: 50%;
+        background-color: #333333;
+        padding: 20px;
+        border-radius: 10px;
+      }
+      #message-input {
+        width: 100%;
+        padding: 10px;
+        margin: 10px 0;
+        border: 1px solid #666666;
+      }
+      #log {
+        background-color: #333333;
+        padding: 20px;
+        margin: 20px auto;
+        width: 50%;
+        border-radius: 10px;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Websocket Broadcast Console</h1>
+    <p id="status" class="status-off">Connecting...</p>
+    <form id="message-form">
+      <input
+        id="message-input"
+        type="text"
+        placeholder="Send cargo..."
+        required
+      />
+      <button type="submit">Deploy Message</button>
+    </form>
+
+    <h3>Live Stream Logs:</h3>
+    <pre id="log"></pre>
+  </body>
+
+  <script>
+    const statusEl = document.getElementById("status");
+    const logEl = document.getElementById("log");
+    const input = document.getElementById("message-input");
+
+    const socket = new WebSocket("ws://localhost:8080");
+
+    const appendLog = (label, message) => {
+      const entry = `[${new Date().toLocaleTimeString()}] ${label} ${message}\n`;
+      log.textContent = entry + log.textContent;
+    };
+
+    socket.addEventListener("open", () => {
+      statusEl.textContent = "Connected: ws://localhost:8080";
+      statusEl.classList = "status-on";
+      appendLog("[SYSTEM]", "Connection established.");
+    });
+
+    socket.addEventListener("close", () => {
+      statusEl.textContent = "Disconnected";
+      statusEl.classList = "status-off";
+      appendLog("[SYSTEM]", "Connection closed.");
+    });
+
+    socket.addEventListener("message", (event) => {
+      appendLog("[RECEIVED]", event.data);
+    });
+
+    document.getElementById("message-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (socket.readyState !== WebSocket.OPEN) {
+        appendLog("[ERROR]", "Socket is not open. Unable to send message.");
+      }
+      const msg = input.value.trim();
+      socket.send(msg);
+      appendLog("[SENT]", msg);
+      input.value = "";
+    });
+  </script>
+</html>

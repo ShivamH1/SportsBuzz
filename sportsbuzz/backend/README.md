@@ -1,4 +1,4 @@
-# demo
+# backend
 
 To install dependencies:
 

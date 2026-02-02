@@ -22,52 +22,12 @@ REST API backend for the SportsBuzz live feed application. Built with **Bun**, *
 
 High-level flow: **Client → Express → Routes → Validation → Drizzle → Neon PostgreSQL**.
 
-```mermaid
-flowchart TB
-    subgraph Client
-        HTTP[HTTP Client]
-    end
+### Architecture Flow (Textual)
 
-    subgraph Backend["SportsBuzz Backend"]
-        Express[Express App]
-        Health[/health]
-        MatchesRouter[/matches Router]
-
-        subgraph MatchesFlow["/matches"]
-            List[GET / - List Matches]
-            Create[POST / - Create Match]
-        end
-
-        subgraph Validation
-            ZodList[listMatchesQuerySchema]
-            ZodCreate[createMatchSchema]
-        end
-
-        subgraph Utils
-            MatchStatus[getMatchStatus]
-        end
-
-        subgraph Data["Data Layer"]
-            Drizzle[Drizzle ORM]
-        end
-    end
-
-    subgraph External["External"]
-        Neon[(Neon PostgreSQL)]
-    end
-
-    HTTP --> Express
-    Express --> Health
-    Express --> MatchesRouter
-    MatchesRouter --> List
-    MatchesRouter --> Create
-    List --> ZodList
-    Create --> ZodCreate
-    Create --> MatchStatus
-    List --> Drizzle
-    Create --> Drizzle
-    Drizzle --> Neon
-```
+- Client sends HTTP requests to the Express backend.
+- Express handles routing and JSON body parsing.
+- Route handlers validate input (with Zod), perform DB queries/updates (with Drizzle), and return formatted responses.
+- Drizzle ORM interacts with Neon PostgreSQL for data persistence.
 
 **Layer responsibilities:**
 
@@ -79,73 +39,29 @@ flowchart TB
 
 ---
 
-## Sequence Diagrams
+## Sequence: List Matches (GET /matches)
 
-### List matches (GET /matches)
+1. Client sends `GET /matches?limit=50`
+2. Express routes request to the matches handler.
+3. The query object is validated with `listMatchesQuerySchema`.
+   - **If validation fails**: Return HTTP 400 with error details.
+   - **If validation succeeds**: Continue.
+4. Drizzle ORM queries the `matches` table, ordering by `createdAt` descending and applying a limit.
+5. Results are returned as `{ data: result }` with HTTP 200.
 
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Express
-    participant MatchesRouter
-    participant Zod
-    participant Drizzle
-    participant PostgreSQL
+---
 
-    Client->>Express: GET /matches?limit=50
-    Express->>MatchesRouter: route to matches router
+## Sequence: Create Match (POST /matches)
 
-    MatchesRouter->>Zod: listMatchesQuerySchema.safeParse(query)
-    alt Validation fails
-        Zod-->>MatchesRouter: parsed.success === false
-        MatchesRouter-->>Client: 400 Invalid Query + details
-    else Validation ok
-        Zod-->>MatchesRouter: parsed.data (limit capped to MAX_LIMIT)
-        MatchesRouter->>Drizzle: db.select().from(matches).orderBy(desc(createdAt)).limit(limit)
-        Drizzle->>PostgreSQL: SELECT ... FROM matches ORDER BY created_at DESC LIMIT ?
-        PostgreSQL-->>Drizzle: rows
-        Drizzle-->>MatchesRouter: result
-        MatchesRouter-->>Client: 200 { data: result }
-    end
-```
-
-### Create match (POST /matches)
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Express
-    participant MatchesRouter
-    participant Zod
-    participant MatchStatus
-    participant Drizzle
-    participant PostgreSQL
-
-    Client->>Express: POST /matches { sport, homeTeam, awayTeam, startTime, endTime, ... }
-    Express->>MatchesRouter: route to matches router
-
-    MatchesRouter->>Zod: createMatchSchema.safeParse(body)
-    alt Validation fails (e.g. endTime <= startTime)
-        Zod-->>MatchesRouter: parsed.success === false
-        MatchesRouter-->>Client: 400 Invalid Payload + details
-    else Validation ok
-        Zod-->>MatchesRouter: parsed.data
-        MatchesRouter->>MatchStatus: getMatchStatus(startTime, endTime)
-        MatchStatus-->>MatchesRouter: "scheduled" | "live" | "finished"
-
-        MatchesRouter->>Drizzle: db.insert(matches).values({ ...rest, startTime, endTime, homeScore, awayScore, status }).returning()
-        Drizzle->>PostgreSQL: INSERT INTO matches ... RETURNING *
-        alt DB error
-            PostgreSQL-->>Drizzle: error
-            Drizzle-->>MatchesRouter: throw
-            MatchesRouter-->>Client: 500 Internal Server Error
-        else Success
-            PostgreSQL-->>Drizzle: inserted row(s)
-            Drizzle-->>MatchesRouter: result; event = result[0]
-            MatchesRouter-->>Client: 201 { data: event }
-        end
-    end
-```
+1. Client sends `POST /matches` with `{ sport, homeTeam, awayTeam, startTime, endTime, ... }`
+2. Express routes request to the matches handler.
+3. The request body is validated with `createMatchSchema`.
+   - **If validation fails**: Return HTTP 400 with error details.
+   - **If validation succeeds**: Continue.
+4. The `getMatchStatus` util determines match status (`scheduled`/`live`/`finished`) based on times.
+5. Drizzle ORM inserts the new match record into the DB and returns the inserted row(s).
+   - **If DB error**: Return HTTP 500 with error details.
+   - **If success**: Return `{ data: insertedMatch }` with HTTP 201.
 
 ---
 
@@ -176,7 +92,7 @@ backend/
 
 | Variable        | Required | Description                          |
 | --------------- | -------- | ------------------------------------ |
-| `DATABASE_URL`  | Yes      | Neon PostgreSQL connection string   |
+| `DATABASE_URL`  | Yes      | Neon PostgreSQL connection string    |
 | `PORT`          | No       | Server port (default: `8000`)        |
 
 Create a `.env` in the project root (see `.env.example` if present). **Do not commit real credentials.**
@@ -223,14 +139,14 @@ Server listens on `PORT` (default `8000`). Health check: `GET http://localhost:8
 
 ## API Summary
 
-| Method | Path       | Description                    | Validation / Behavior                    |
-| ------ | ---------- | ------------------------------ | ----------------------------------------- |
-| GET    | `/health`  | Liveness check                 | —                                         |
-| GET    | `/matches` | List matches (newest first)    | Query: `limit` (optional, max 100, default 50) |
-| POST   | `/matches` | Create a match                 | Body: `sport`, `homeTeam`, `awayTeam`, `startTime`, `endTime` (ISO); optional `homeScore`, `awayScore`. `endTime` must be after `startTime`. Status derived from current time vs start/end. |
+| Method | Path       | Description                    | Validation / Behavior                            |
+| ------ | ---------- | ------------------------------ | ------------------------------------------------ |
+| GET    | `/health`  | Liveness check                 | —                                                |
+| GET    | `/matches` | List matches (newest first)    | Query: `limit` (optional, max 100, default 50)   |
+| POST   | `/matches` | Create a match                 | Body: `sport`, `homeTeam`, `awayTeam`, `startTime`, `endTime` (ISO); optional `homeScore`, `awayScore`. `endTime` must be after `startTime`. Status derived automatically. |
 
-**List response:** `200` → `{ data: Match[] }`.  
-**Create response:** `201` → `{ data: Match }`.  
+**List response:** `200` → `{ data: Match[] }`  
+**Create response:** `201` → `{ data: Match }`  
 **Errors:** `400` (validation) with `error` and `details`; `500` (server) with `error` and `details`.
 
 ---
@@ -249,8 +165,8 @@ Schema and types are defined in `src/db/schema.ts`; run `db:generate` and `db:mi
 
 `getMatchStatus(startTime, endTime, now?)`:
 
-- `now < startTime` → **scheduled**
-- `now >= endTime` → **finished**
-- Otherwise → **live**
+- If `now < startTime`: **scheduled**
+- If `now >= endTime`: **finished**
+- Otherwise: **live**
 
-Used on create to set `status`; `syncMatchStatus` is available for background updates if needed.
+Used during match creation to set `status`. `syncMatchStatus` can be used for background status updates if needed.

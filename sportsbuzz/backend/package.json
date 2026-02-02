@@ -6,16 +6,26 @@
   "scripts": {
     "dev": "bun run --watch src/index.ts",
     "start": "bun run src/index.ts",
-    "build": "bun build src/index.ts --outdir dist"
+    "build": "bun build src/index.ts --outdir dist",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/ws": "^8.18.1",
+    "drizzle-kit": "^0.31.8",
+    "tsx": "^4.21.0"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.0.2",
     "@types/express": "^5.0.6",
-    "express": "^5.2.1"
+    "dotenv": "^17.2.3",
+    "drizzle-orm": "^0.45.1",
+    "express": "^5.2.1",
+    "ws": "^8.19.0"
   }
 }

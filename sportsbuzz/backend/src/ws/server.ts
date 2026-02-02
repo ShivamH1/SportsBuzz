@@ -8,11 +8,15 @@ function sendJson(socket: WebSocket, payload: any) {
 
 function broadcast(wss: Server, payload: any) {
   wss.clients.forEach((socket: WebSocket) => {
-    if (socket.readyState !== WebSocket.OPEN) {
-      return;
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify(payload));
     }
-    socket.send(JSON.stringify(payload));
   });
+}
+
+// Extend WebSocket type to support isAlive
+interface HeartbeatWebSocket extends WebSocket {
+  isAlive?: boolean;
 }
 
 export function attachWebSocketServer(
@@ -25,11 +29,33 @@ export function attachWebSocketServer(
   });
 
   wss.on("connection", (socket: WebSocket) => {
-    sendJson(socket, {
+    const hbSocket = socket as HeartbeatWebSocket;
+    hbSocket.isAlive = true;
+    hbSocket.on("pong", () => {
+      hbSocket.isAlive = true;
+    });
+
+    sendJson(hbSocket, {
       type: "welcome",
       message: "Welcome to the WebSocket server",
     });
-    socket.on("error", console.error);
+
+    hbSocket.on("error", console.error);
+  });
+
+  const interval = setInterval(() => {
+    wss.clients.forEach((ws) => {
+      const hbWs = ws as HeartbeatWebSocket;
+      if (hbWs.isAlive === false) {
+        return hbWs.terminate();
+      }
+      hbWs.isAlive = false;
+      hbWs.ping();
+    });
+  }, 30000);
+
+  wss.on("close", () => {
+    clearInterval(interval);
   });
 
   function broadcastMatchCreated(match: Match) {

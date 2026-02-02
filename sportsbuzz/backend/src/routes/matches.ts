@@ -18,12 +18,16 @@ matchesRouter.get("/", async (req: Request, res: Response) => {
   if (!parsed.success) {
     return res.status(400).json({
       error: "Invalid Query",
-      details: JSON.stringify(parsed.error),
+      details: parsed.error.issues,
     });
   }
 
   const limit = Math.min(parsed.data.limit ?? 50, MAX_LIMIT);
-  const result = await db.select().from(matches).orderBy((desc(matches.createdAt))).limit(limit);
+  const result = await db
+    .select()
+    .from(matches)
+    .orderBy(desc(matches.createdAt))
+    .limit(limit);
 
   return res.status(200).json({ data: result });
 });
@@ -34,7 +38,7 @@ matchesRouter.post("/", async (req: Request, res: Response) => {
   if (!parsed.success) {
     return res.status(400).json({
       error: "Invalid Payload",
-      details: JSON.stringify(parsed.error),
+      details: parsed.error.issues,
     });
   }
 
@@ -52,13 +56,14 @@ matchesRouter.post("/", async (req: Request, res: Response) => {
         status: getMatchStatus(startTime, endTime) as MatchStatus,
       })
       .returning();
-
     const [event] = result;
+
+    if (res.app.locals.broadcastMatchCreated) {
+      res.app.locals.broadcastMatchCreated(event);
+    }
 
     return res.status(201).json({ data: event });
   } catch (error) {
-    return res
-      .status(500)
-      .json({ error: "Internal Server Error", details: JSON.stringify(error) });
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 });

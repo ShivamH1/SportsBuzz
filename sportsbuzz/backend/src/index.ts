@@ -21,8 +21,8 @@ app.get("/health", (req, res) => {
 app.use("/matches", matchesRouter);
 app.use("/matches/:id/commentary", commentaryRouter);
 
-const { broadcastMatchCreated } = attachWebSocketServer(server);
-const { broadcastCommentary } = attachWebSocketServer(server);
+const { broadcastMatchCreated, broadcastCommentary } =
+  attachWebSocketServer(server);
 
 // This statement makes the broadcastMatchCreated and broadcastCommentary functions available on app.locals so that it can be accessed from other parts of the app
 // (e.g., in route handlers or middleware) via req.app.locals.broadcastMatchCreated.

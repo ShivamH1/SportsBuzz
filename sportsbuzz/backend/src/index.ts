@@ -5,6 +5,7 @@ import http from "http";
 import { attachWebSocketServer } from "./ws/server";
 import { securityMiddleware } from "./arcjet";
 import { commentaryRouter } from "./routes/commentary";
+import cors from "cors";
 
 const PORT = process.env.PORT || 8000;
 const HOST = process.env.HOST || "0.0.0.0";
@@ -13,6 +14,7 @@ const app = express();
 const server = http.createServer(app);
 
 app.use(express.json());
+app.use(cors({ origin: "*" }));
 app.use(securityMiddleware());
 
 app.get("/health", (req, res) => {

@@ -1,6 +1,6 @@
 # SportsBuzz Backend
 
-REST API backend for the SportsBuzz live feed application. Built with **Bun**, **Express**, **TypeScript**, **Drizzle ORM**, and **PostgreSQL** (Neon). Manages matches and match status (scheduled / live / finished).
+REST API and WebSocket backend for the SportsBuzz live feed application. Built with **Bun**, **Express**, **TypeScript**, **Drizzle ORM**, and **PostgreSQL** (Neon). Manages matches and match status (scheduled / live / finished), with real-time updates over WebSocket and protection via **Arcjet** (shield, bot detection, rate limiting).
 
 ---
 
@@ -14,25 +14,65 @@ REST API backend for the SportsBuzz live feed application. Built with **Bun**, *
 | Database     | PostgreSQL (Neon serverless)        |
 | ORM          | Drizzle ORM                         |
 | Validation   | Zod                                 |
-| Config       | dotenv (`PORT`, `DATABASE_URL`)     |
+| Real-time    | WebSocket (`ws`, path `/ws`)        |
+| Security     | [Arcjet](https://arcjet.com) (shield, detectBot, slidingWindow) |
+| Config       | dotenv (`PORT`, `HOST`, `DATABASE_URL`, `ARCJET_*`) |
 
 ---
 
 ## Architecture
 
-High-level flow: **Client → Express → Routes → Validation → Drizzle → Neon PostgreSQL**.
+High-level flow: **Client → HTTP/WS → Arcjet (optional) → Express / WebSocket → Routes or WS handler → Validation → Drizzle → Neon PostgreSQL**.
+
+### Architecture Diagram
+
+```mermaid
+flowchart TB
+    subgraph Client
+        HTTP[HTTP Client]
+        WS[WebSocket Client]
+    end
+
+    subgraph Backend["Backend (Bun + Express)"]
+        Server[HTTP Server]
+        Arcjet[Arcjet]
+        Express[Express]
+        Routes[Routes /matches]
+        Validation[Validation Zod]
+        WSS[WebSocket Server]
+    end
+
+    subgraph Data
+        Drizzle[Drizzle ORM]
+        DB[(Neon PostgreSQL)]
+    end
+
+    HTTP --> Server
+    WS -->|Upgrade /ws| Server
+    Server --> Arcjet
+    Arcjet -->|Allow| Express
+    Arcjet -->|Allow| WSS
+    Arcjet -->|Deny| HTTP
+    Express --> Routes
+    Routes --> Validation
+    Validation --> Drizzle
+    Drizzle --> DB
+    WSS -->|heartbeat, broadcast| WS
+    Routes -->|broadcastMatchCreated| WSS
+```
 
 ### Architecture Flow (Textual)
 
-- Client sends HTTP requests to the Express backend.
-- Express handles routing and JSON body parsing.
-- Route handlers validate input (with Zod), perform DB queries/updates (with Drizzle), and return formatted responses.
-- Drizzle ORM interacts with Neon PostgreSQL for data persistence.
+- **HTTP:** Client requests hit Express. Arcjet middleware runs first (rate limit, bot/shield); denied requests get 429/403/503. Valid requests go to routes; handlers validate input (Zod), use Drizzle, return JSON.
+- **WebSocket:** Upgrade requests are handled by the HTTP server’s `upgrade` event. Arcjet protects the upgrade (same rules, different limits); denied clients get an HTTP error and the socket is destroyed. Accepted clients complete the handshake; the WS server handles heartbeat, welcome message, and broadcasts (e.g. `match_created`).
+- Drizzle ORM talks to Neon PostgreSQL for persistence.
 
 **Layer responsibilities:**
 
-- **Express** — HTTP server, JSON body parsing, route mounting.
-- **Routes** — Request handling; validate input (Zod), call DB, format response.
+- **Express** — HTTP server, JSON body parsing, route mounting, `securityMiddleware()` (Arcjet).
+- **Arcjet** — `src/arcjet.ts`: HTTP middleware (Express req → Fetch Request) and WS protection in server `upgrade` (IncomingMessage → Fetch Request). Rules: shield, detectBot, slidingWindow (HTTP: 50/10s; WS: 5/2s).
+- **WebSocket** — `src/ws/server.ts`: `attachWebSocketServer(server)` uses `noServer: true`, handles `server.on("upgrade")`, then `handleUpgrade` and `connection` (heartbeat, welcome, `broadcastMatchCreated` via `app.locals`).
+- **Routes** — Request handling; validate (Zod), DB (Drizzle), response; POST /matches can call `req.app.locals.broadcastMatchCreated(match)`.
 - **Validation** — Query and body schemas (limit, sport, teams, times, scores).
 - **Utils** — `getMatchStatus(startTime, endTime)` → `scheduled` | `live` | `finished`.
 - **DB** — Drizzle + Neon serverless pool; schema: `matches`, `commentary` (relations defined).
@@ -40,6 +80,38 @@ High-level flow: **Client → Express → Routes → Validation → Drizzle → 
 ---
 
 ## Sequence: List Matches (GET /matches)
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Express
+    participant Arcjet
+    participant Routes
+    participant Validation
+    participant Drizzle
+    participant DB
+
+    Client->>Express: GET /matches?limit=50
+    Express->>Arcjet: protect(req)
+    Arcjet-->>Arcjet: shield, detectBot, slidingWindow
+    alt Denied
+        Arcjet-->>Client: 429 / 403 / 503
+    else Allowed
+        Arcjet-->>Express: next()
+        Express->>Routes: matches handler
+        Routes->>Validation: listMatchesQuerySchema
+        alt Validation fails
+            Validation-->>Client: 400 + details
+        else Validation OK
+            Validation-->>Routes: query params
+            Routes->>Drizzle: query matches
+            Drizzle->>DB: SELECT
+            DB-->>Drizzle: rows
+            Drizzle-->>Routes: result
+            Routes-->>Client: 200 { data: Match[] }
+        end
+    end
+```
 
 1. Client sends `GET /matches?limit=50`
 2. Express routes request to the matches handler.
@@ -53,6 +125,38 @@ High-level flow: **Client → Express → Routes → Validation → Drizzle → 
 
 ## Sequence: Create Match (POST /matches)
 
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Express
+    participant Arcjet
+    participant Routes
+    participant Validation
+    participant Drizzle
+    participant DB
+    participant WSS as WebSocket Server
+    participant WSClient as WS Clients
+
+    Client->>Express: POST /matches (body)
+    Express->>Arcjet: protect(req)
+    Arcjet-->>Express: next() [allowed]
+    Express->>Routes: matches handler
+    Routes->>Validation: createMatchSchema
+    alt Validation fails
+        Validation-->>Client: 400 + details
+    else Validation OK
+        Validation-->>Routes: parsed body
+        Routes->>Routes: getMatchStatus(startTime, endTime)
+        Routes->>Drizzle: insert match
+        Drizzle->>DB: INSERT
+        DB-->>Drizzle: inserted row
+        Drizzle-->>Routes: match
+        Routes->>WSS: broadcastMatchCreated(match)
+        WSS->>WSClient: { type: "match_created", data: match }
+        Routes-->>Client: 201 { data: Match }
+    end
+```
+
 1. Client sends `POST /matches` with `{ sport, homeTeam, awayTeam, startTime, endTime, ... }`
 2. Express routes request to the matches handler.
 3. The request body is validated with `createMatchSchema`.
@@ -61,7 +165,7 @@ High-level flow: **Client → Express → Routes → Validation → Drizzle → 
 4. The `getMatchStatus` util determines match status (`scheduled`/`live`/`finished`) based on times.
 5. Drizzle ORM inserts the new match record into the DB and returns the inserted row(s).
    - **If DB error**: Return HTTP 500 with error details.
-   - **If success**: Return `{ data: insertedMatch }` with HTTP 201.
+   - **If success**: Return `{ data: insertedMatch }` with HTTP 201; optionally broadcast to WebSocket clients via `broadcastMatchCreated(match)`.
 
 ---
 
@@ -70,9 +174,12 @@ High-level flow: **Client → Express → Routes → Validation → Drizzle → 
 ```
 backend/
 ├── src/
-│   ├── index.ts              # Express app, health check, mount /matches
+│   ├── index.ts              # Express app, HTTP server, health, /matches, Arcjet middleware, attachWebSocketServer
+│   ├── arcjet.ts             # Arcjet (HTTP + WS), expressReqToFetchRequest, incomingMessageToFetchRequest
 │   ├── routes/
 │   │   └── matches.ts        # GET / and POST / for matches
+│   ├── ws/
+│   │   └── server.ts         # WebSocket server (upgrade handler, Arcjet, heartbeat, broadcastMatchCreated)
 │   ├── db/
 │   │   ├── db.ts             # Neon pool + Drizzle instance
 │   │   └── schema.ts         # matches, commentary tables, relations, types
@@ -90,10 +197,13 @@ backend/
 
 ## Environment Variables
 
-| Variable        | Required | Description                          |
-| --------------- | -------- | ------------------------------------ |
-| `DATABASE_URL`  | Yes      | Neon PostgreSQL connection string    |
-| `PORT`          | No       | Server port (default: `8000`)        |
+| Variable         | Required | Description                                                |
+| ---------------- | -------- | ---------------------------------------------------------- |
+| `DATABASE_URL`   | Yes      | Neon PostgreSQL connection string                          |
+| `ARCJET_API_KEY` | Yes      | Arcjet API key (shield, bot detection, rate limiting)      |
+| `PORT`           | No       | Server port (default: `8000`)                              |
+| `HOST`           | No       | Bind address (default: `0.0.0.0`)                          |
+| `ARCJET_ENV`     | No       | `DRY_RUN` to log only, or `LIVE` (default) to enforce       |
 
 Create a `.env` in the project root (see `.env.example` if present). **Do not commit real credentials.**
 
@@ -133,7 +243,46 @@ bun run db:migrate    # run migrations
 bun run db:studio     # open Drizzle Studio
 ```
 
-Server listens on `PORT` (default `8000`). Health check: `GET http://localhost:8000/health` → `200 OK`.
+Server listens on `HOST:PORT` (default `0.0.0.0:8000`). Health check: `GET http://localhost:8000/health` → `200 OK`. WebSocket: `ws://localhost:8000/ws`.
+
+---
+
+## WebSocket
+
+### WebSocket connection sequence
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Server as HTTP Server
+    participant Arcjet
+    participant WSS as WebSocket Server
+
+    Client->>Server: GET /ws (Upgrade)
+    Server->>Server: upgrade event (req, socket, head)
+    Server->>Arcjet: protect(incomingMessageToFetchRequest(req))
+    alt Denied (rate limit)
+        Arcjet-->>Server: decision.isDenied(), isRateLimit()
+        Server->>Client: HTTP 429 + body, socket.destroy()
+    else Denied (forbidden)
+        Arcjet-->>Server: decision.isDenied()
+        Server->>Client: HTTP 403 + body, socket.destroy()
+    else Error
+        Arcjet-->>Server: throw
+        Server->>Client: HTTP 503 + body, socket.destroy()
+    else Allowed
+        Arcjet-->>Server: decision allowed
+        Server->>WSS: handleUpgrade(req, socket, head, cb)
+        WSS->>WSS: emit("connection", ws, req)
+        WSS->>Client: welcome { type: "welcome", message: "..." }
+        Note over WSS,Client: heartbeat ping/pong every 30s
+    end
+```
+
+- **Endpoint:** `ws://<host>:<port>/ws`
+- **Upgrade:** Protection runs in the HTTP server `upgrade` handler (before handshake). Denied requests receive an HTTP error (429 rate limit, 403 forbidden, 503 on error) and the socket is destroyed.
+- **After connect:** Server sends a welcome message `{ type: "welcome", message: "..." }`. Heartbeat (ping/pong) every 30s; unresponsive clients are terminated.
+- **Broadcast:** When a match is created via POST /matches, the server can call `req.app.locals.broadcastMatchCreated(match)` to send `{ type: "match_created", data: match }` to all connected clients.
 
 ---
 
@@ -147,7 +296,7 @@ Server listens on `PORT` (default `8000`). Health check: `GET http://localhost:8
 
 **List response:** `200` → `{ data: Match[] }`  
 **Create response:** `201` → `{ data: Match }`  
-**Errors:** `400` (validation) with `error` and `details`; `500` (server) with `error` and `details`.
+**Errors:** `400` (validation) with `error` and `details`; `429` (rate limit), `403` (Arcjet denied), `503` (Arcjet/upstream error); `500` (server) with `error` and `details`.
 
 ---
 

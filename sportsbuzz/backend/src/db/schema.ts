@@ -59,11 +59,17 @@ export const commentary = pgTable("commentary", {
 });
 
 // Relations for type-safe queries
+// These define how the two tables are related for ORM queries:
+// - Each match can have many commentary records (one-to-many).
+// - Each commentary is linked to a single match (many-to-one).
+
 export const matchesRelations = relations(matches, ({ many }) => ({
+  // 'matches' has a one-to-many relationship with 'commentary':
   commentary: many(commentary),
 }));
 
 export const commentaryRelations = relations(commentary, ({ one }) => ({
+  // Each 'commentary' belongs to one 'match':
   match: one(matches, {
     fields: [commentary.matchId],
     references: [matches.id],

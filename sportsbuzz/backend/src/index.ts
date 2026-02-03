@@ -18,7 +18,8 @@ app.get("/health", (req, res) => {
 app.use("/matches", matchesRouter);
 
 const { broadcastMatchCreated } = attachWebSocketServer(server);
-// This statement makes the broadcastMatchCreated function available on app.locals so that it can be accessed from other parts of the app (e.g., in route handlers or middleware) via req.app.locals.broadcastMatchCreated.
+// This statement makes the broadcastMatchCreated function available on app.locals so that it can be accessed from other parts of the app 
+// (e.g., in route handlers or middleware) via req.app.locals.broadcastMatchCreated.
 app.locals.broadcastMatchCreated = broadcastMatchCreated;
 
 server.listen(PORT, Number(HOST), () => {

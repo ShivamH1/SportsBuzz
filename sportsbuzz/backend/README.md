@@ -1,6 +1,6 @@
 # SportsBuzz Backend
 
-REST API and WebSocket backend for the SportsBuzz live feed application. Built with **Bun**, **Express**, **TypeScript**, **Drizzle ORM**, and **PostgreSQL** (Neon). Manages matches and match status (scheduled / live / finished), with real-time updates over WebSocket and protection via **Arcjet** (shield, bot detection, rate limiting).
+REST API and WebSocket backend for the SportsBuzz live feed application. Built with **Bun**, **Express**, **TypeScript**, **Drizzle ORM**, and **PostgreSQL** (Neon). Manages matches and match status (scheduled / live / finished), match commentary, real-time updates over WebSocket (subscribe by match, broadcasts for new matches and commentary), and protection via **Arcjet** (shield, bot detection, rate limiting).
 
 ---
 
@@ -22,7 +22,7 @@ REST API and WebSocket backend for the SportsBuzz live feed application. Built w
 
 ## Architecture
 
-High-level flow: **Client → HTTP/WS → Arcjet (optional) → Express / WebSocket → Routes or WS handler → Validation → Drizzle → Neon PostgreSQL**.
+High-level flow: **Client → HTTP/WS → Arcjet (optional) → Express / WebSocket → Routes (/matches, /matches/:id/commentary) or WS handler (subscribe, broadcast) → Validation → Drizzle → Neon PostgreSQL**.
 
 ### Architecture Diagram
 
@@ -58,22 +58,22 @@ flowchart TB
     Validation --> Drizzle
     Drizzle --> DB
     WSS -->|heartbeat, broadcast| WS
-    Routes -->|broadcastMatchCreated| WSS
+    Routes -->|broadcastMatchCreated, broadcastCommentary| WSS
 ```
 
 ### Architecture Flow (Textual)
 
-- **HTTP:** Client requests hit Express. Arcjet middleware runs first (rate limit, bot/shield); denied requests get 429/403/503. Valid requests go to routes; handlers validate input (Zod), use Drizzle, return JSON.
-- **WebSocket:** Upgrade requests are handled by the HTTP server’s `upgrade` event. Arcjet protects the upgrade (same rules, different limits); denied clients get an HTTP error and the socket is destroyed. Accepted clients complete the handshake; the WS server handles heartbeat, welcome message, and broadcasts (e.g. `match_created`).
+- **HTTP:** Client requests hit Express. Arcjet middleware runs first (rate limit, bot/shield); denied requests get 429/403/503. Valid requests go to routes (/matches, /matches/:id/commentary); handlers validate input (Zod), use Drizzle, return JSON. POST handlers may broadcast to WebSocket clients via `app.locals`.
+- **WebSocket:** Upgrade requests are handled by the HTTP server’s `upgrade` event. Arcjet protects the upgrade (same rules, different limits); denied clients get an HTTP error and the socket is destroyed. Accepted clients complete the handshake; the WS server handles heartbeat, welcome message, subscribe/unsubscribe by match, and broadcasts (`match_created` to all, `commentary` to subscribers only).
 - Drizzle ORM talks to Neon PostgreSQL for persistence.
 
 **Layer responsibilities:**
 
 - **Express** — HTTP server, JSON body parsing, route mounting, `securityMiddleware()` (Arcjet).
 - **Arcjet** — `src/arcjet.ts`: HTTP middleware (Express req → Fetch Request) and WS protection in server `upgrade` (IncomingMessage → Fetch Request). Rules: shield, detectBot, slidingWindow (HTTP: 50/10s; WS: 5/2s).
-- **WebSocket** — `src/ws/server.ts`: `attachWebSocketServer(server)` uses `noServer: true`, handles `server.on("upgrade")`, then `handleUpgrade` and `connection` (heartbeat, welcome, `broadcastMatchCreated` via `app.locals`).
-- **Routes** — Request handling; validate (Zod), DB (Drizzle), response; POST /matches can call `req.app.locals.broadcastMatchCreated(match)`.
-- **Validation** — Query and body schemas (limit, sport, teams, times, scores).
+- **WebSocket** — `src/ws/server.ts`: `attachWebSocketServer(server)` uses `noServer: true`, handles `server.on("upgrade")`, then `handleUpgrade` and `connection` (heartbeat, welcome, subscribe/unsubscribe by match, `broadcastMatchCreated` and `broadcastCommentary` via `app.locals`).
+- **Routes** — Request handling; validate (Zod), DB (Drizzle), response; POST /matches calls `req.app.locals.broadcastMatchCreated(match)`; POST /matches/:id/commentary calls `req.app.locals.broadcastCommentary(matchId, commentary)`.
+- **Validation** — Query and body schemas for matches (limit, sport, teams, times, scores) and commentary (limit, minute, message, etc.).
 - **Utils** — `getMatchStatus(startTime, endTime)` → `scheduled` | `live` | `finished`.
 - **DB** — Drizzle + Neon serverless pool; schema: `matches`, `commentary` (relations defined).
 
@@ -272,17 +272,19 @@ sequenceDiagram
 ```
 backend/
 ├── src/
-│   ├── index.ts              # Express app, HTTP server, health, /matches, Arcjet middleware, attachWebSocketServer
+│   ├── index.ts              # Express app, HTTP server, health, /matches, /matches/:id/commentary, Arcjet, attachWebSocketServer
 │   ├── arcjet.ts             # Arcjet (HTTP + WS), expressReqToFetchRequest, incomingMessageToFetchRequest
 │   ├── routes/
-│   │   └── matches.ts        # GET / and POST / for matches
+│   │   ├── matches.ts        # GET / and POST / for matches
+│   │   └── commentary.ts    # GET / and POST / for match commentary (mounted at /matches/:id/commentary)
 │   ├── ws/
-│   │   └── server.ts         # WebSocket server (upgrade handler, Arcjet, heartbeat, broadcastMatchCreated)
+│   │   └── server.ts         # WebSocket server (upgrade, Arcjet, heartbeat, subscribe/unsubscribe, broadcastMatchCreated, broadcastCommentary)
 │   ├── db/
 │   │   ├── db.ts             # Neon pool + Drizzle instance
 │   │   └── schema.ts         # matches, commentary tables, relations, types
 │   ├── validations/
-│   │   └── matches.ts        # Zod schemas (list query, create body, etc.)
+│   │   ├── matches.ts        # Zod schemas (list query, create body, etc.)
+│   │   └── commentary.ts    # Zod schemas (list query, create body, match id param)
 │   └── utils/
 │       └── matchStatus.ts    # getMatchStatus, syncMatchStatus
 ├── drizzle.config.ts        # Drizzle Kit config (schema, migrations out dir)
@@ -377,10 +379,59 @@ sequenceDiagram
     end
 ```
 
+### WebSocket pub/sub sequence (subscribe → publish → notify)
+
+Commentary uses a pub/sub model: clients subscribe to a match by `matchId`; when commentary is published (via POST /matches/:id/commentary), only subscribers of that match receive the event.
+
+```mermaid
+sequenceDiagram
+    participant WSClient as WS Client A
+    participant WSS as WebSocket Server
+    participant Store as matchSubscribers (in-memory)
+    participant REST as REST Client
+    participant Routes as Commentary Route
+    participant DB as Database
+    participant WSClientB as WS Client B
+
+    Note over WSClient,WSClientB: Subscribe phase
+    WSClient->>WSS: { type: "subscribe", matchId: 1 }
+    WSS->>Store: subscribe(1, socketA)
+    Store-->>WSS: OK
+    WSS->>WSClient: { type: "subscribed", matchId: 1 }
+
+    WSClientB->>WSS: { type: "subscribe", matchId: 1 }
+    WSS->>Store: subscribe(1, socketB)
+    Store-->>WSS: OK
+    WSS->>WSClientB: { type: "subscribed", matchId: 1 }
+
+    Note over REST,DB: Publish phase (e.g. new commentary)
+    REST->>Routes: POST /matches/1/commentary (body)
+    Routes->>DB: insert commentary
+    DB-->>Routes: commentary row
+    Routes->>WSS: broadcastCommentary(1, commentary)
+
+    Note over WSS,WSClientB: Notify phase (only subscribers of match 1)
+    WSS->>Store: get subscribers(1)
+    Store-->>WSS: [socketA, socketB]
+    WSS->>WSClient: { type: "commentary", data: commentary }
+    WSS->>WSClientB: { type: "commentary", data: commentary }
+
+    Routes-->>REST: 201 { data: commentary }
+```
+
+- **Subscribe:** Client sends `{ type: "subscribe", matchId }`; server adds the socket to an in-memory map `matchId → Set<WebSocket>` and replies `{ type: "subscribed", matchId }`.
+- **Publish:** Any client (or server) creates commentary via POST /matches/:id/commentary; the route persists to the DB and calls `broadcastCommentary(matchId, commentary)`.
+- **Notify:** The WebSocket server looks up subscribers for that `matchId` and sends `{ type: "commentary", data }` only to those sockets. Unsubscribed clients do not receive the event.
+
 - **Endpoint:** `ws://<host>:<port>/ws`
 - **Upgrade:** Protection runs in the HTTP server `upgrade` handler (before handshake). Denied requests receive an HTTP error (429 rate limit, 403 forbidden, 503 on error) and the socket is destroyed.
 - **After connect:** Server sends a welcome message `{ type: "welcome", message: "..." }`. Heartbeat (ping/pong) every 30s; unresponsive clients are terminated.
-- **Broadcast:** When a match is created via POST /matches, the server can call `req.app.locals.broadcastMatchCreated(match)` to send `{ type: "match_created", data: match }` to all connected clients.
+- **Subscribe / Unsubscribe:** Clients send JSON messages to receive match-specific events:
+  - `{ type: "subscribe", matchId: number }` — subscribe to a match; server replies `{ type: "subscribed", matchId }`.
+  - `{ type: "unsubscribe", matchId: number }` — unsubscribe; server replies `{ type: "unsubscribed", matchId }`.
+- **Broadcasts:**
+  - **Match created:** When a match is created via POST /matches, the server calls `req.app.locals.broadcastMatchCreated(match)` → all clients receive `{ type: "match_created", data: match }`.
+  - **Commentary:** When commentary is added via POST /matches/:id/commentary, the server calls `req.app.locals.broadcastCommentary(matchId, commentary)` → only clients subscribed to that match receive `{ type: "commentary", data: commentary }`.
 
 ---
 

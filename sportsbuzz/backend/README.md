@@ -169,6 +169,104 @@ sequenceDiagram
 
 ---
 
+## Sequence: List Commentary (GET /matches/:id/commentary)
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Express
+    participant Arcjet
+    participant Routes
+    participant Validation
+    participant Drizzle
+    participant DB
+
+    Client->>Express: GET /matches/1/commentary?limit=10
+    Express->>Arcjet: protect(req)
+    Arcjet-->>Arcjet: shield, detectBot, slidingWindow
+    alt Denied
+        Arcjet-->>Client: 429 / 403 / 503
+    else Allowed
+        Arcjet-->>Express: next()
+        Express->>Routes: commentary handler
+        Routes->>Validation: matchIdParamSchema (params)
+        alt Params invalid
+            Validation-->>Client: 400 + details
+        else Params OK
+            Routes->>Validation: listCommentaryQuerySchema (query)
+            alt Query invalid
+                Validation-->>Client: 400 + details
+            else Query OK
+                Validation-->>Routes: matchId, limit
+                Routes->>Drizzle: select from commentary where matchId
+                Drizzle->>DB: SELECT
+                DB-->>Drizzle: rows
+                Drizzle-->>Routes: result
+                Routes-->>Client: 200 { data: Commentary[] }
+            end
+        end
+    end
+```
+
+1. Client sends `GET /matches/:id/commentary?limit=10` (path param `id` = match ID).
+2. Express routes request to the commentary handler (mounted at `/matches/:id/commentary`).
+3. Path params are validated with `matchIdParamSchema`; query with `listCommentaryQuerySchema`.
+   - **If validation fails**: Return HTTP 400 with error details.
+   - **If validation succeeds**: Continue.
+4. Drizzle ORM queries the `commentary` table filtered by `matchId`, ordered by `createdAt` descending, with limit (default 10, max 100).
+5. Results are returned as `{ data: Commentary[] }` with HTTP 200.
+
+---
+
+## Sequence: Create Commentary (POST /matches/:id/commentary)
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Express
+    participant Arcjet
+    participant Routes
+    participant Validation
+    participant Drizzle
+    participant DB
+    participant WSS as WebSocket Server
+    participant WSClient as WS Subscribers
+
+    Client->>Express: POST /matches/1/commentary (body)
+    Express->>Arcjet: protect(req)
+    Arcjet-->>Express: next() [allowed]
+    Express->>Routes: commentary handler
+    Routes->>Validation: matchIdParamSchema (params)
+    alt Params invalid
+        Validation-->>Client: 400 + details
+    else Params OK
+        Routes->>Validation: createCommentarySchema (body)
+        alt Body invalid
+            Validation-->>Client: 400 + details
+        else Body OK
+            Validation-->>Routes: matchId, minute, message, ...
+            Routes->>Drizzle: insert commentary
+            Drizzle->>DB: INSERT
+            DB-->>Drizzle: inserted row
+            Drizzle-->>Routes: commentary
+            Routes->>WSS: broadcastCommentary(matchId, commentary)
+            WSS->>WSClient: { type: "commentary", data } (subscribers only)
+            Routes-->>Client: 201 { data: Commentary }
+        end
+    end
+```
+
+1. Client sends `POST /matches/:id/commentary` with body `{ minute, message, ... }` (path param `id` = match ID).
+2. Express routes request to the commentary handler.
+3. Path params are validated with `matchIdParamSchema`; body with `createCommentarySchema` (e.g. `minute`, `message` required).
+   - **If validation fails**: Return HTTP 400 with error details.
+   - **If validation succeeds**: Continue.
+4. Drizzle ORM inserts the commentary row and returns the inserted record.
+5. Route calls `req.app.locals.broadcastCommentary(matchId, commentary)` so only WebSocket clients subscribed to that match receive `{ type: "commentary", data }`.
+6. Response is `{ data: Commentary }` with HTTP 201.
+
+---
+
 ## Project Structure
 
 ```
@@ -288,14 +386,18 @@ sequenceDiagram
 
 ## API Summary
 
-| Method | Path       | Description                    | Validation / Behavior                            |
-| ------ | ---------- | ------------------------------ | ------------------------------------------------ |
-| GET    | `/health`  | Liveness check                 | —                                                |
-| GET    | `/matches` | List matches (newest first)    | Query: `limit` (optional, max 100, default 50)   |
-| POST   | `/matches` | Create a match                 | Body: `sport`, `homeTeam`, `awayTeam`, `startTime`, `endTime` (ISO); optional `homeScore`, `awayScore`. `endTime` must be after `startTime`. Status derived automatically. |
+| Method | Path                       | Description                    | Validation / Behavior                            |
+| ------ | -------------------------- | ------------------------------ | ------------------------------------------------ |
+| GET    | `/health`                  | Liveness check                 | —                                                |
+| GET    | `/matches`                 | List matches (newest first)    | Query: `limit` (optional, max 100, default 50)   |
+| POST   | `/matches`                 | Create a match                 | Body: `sport`, `homeTeam`, `awayTeam`, `startTime`, `endTime` (ISO); optional `homeScore`, `awayScore`. `endTime` must be after `startTime`. Status derived automatically. |
+| GET    | `/matches/:id/commentary`  | List commentary for a match   | Params: `id` (match ID). Query: `limit` (optional, max 100, default 10). |
+| POST   | `/matches/:id/commentary`  | Add commentary for a match    | Params: `id` (match ID). Body: `minute` (int), `message` (required); optional `sequence`, `period`, `eventType`, `actor`, `team`, `metadata`, `tags`. |
 
-**List response:** `200` → `{ data: Match[] }`  
-**Create response:** `201` → `{ data: Match }`  
+**List matches:** `200` → `{ data: Match[] }`  
+**Create match:** `201` → `{ data: Match }`  
+**List commentary:** `200` → `{ data: Commentary[] }`  
+**Create commentary:** `201` → `{ data: Commentary }` (and broadcast to subscribed WebSocket clients).  
 **Errors:** `400` (validation) with `error` and `details`; `429` (rate limit), `403` (Arcjet denied), `503` (Arcjet/upstream error); `500` (server) with `error` and `details`.
 
 ---

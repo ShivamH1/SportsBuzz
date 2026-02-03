@@ -1,5 +1,6 @@
 import WebSocket, { WebSocketServer, type Server } from "ws";
 import type { Match } from "../db/schema";
+import { incomingMessageToFetchRequest, wsArcjet } from "../arcjet";
 
 function sendJson(socket: WebSocket, payload: any) {
   if (socket.readyState !== WebSocket.OPEN) return;
@@ -19,17 +20,22 @@ interface HeartbeatWebSocket extends WebSocket {
   isAlive?: boolean;
 }
 
+/** Return type of {@link attachWebSocketServer}: object with broadcast helpers. */
+export type WebSocketServerHandle = {
+  broadcastMatchCreated: (match: Match) => void;
+};
+
 /**
  * Attaches a WebSocket server to an existing HTTP or HTTPS server.
  * Sets up real-time communication with clients, including heartbeat checks to clean up dead connections,
  * a welcome message when a client connects, and a broadcast function for new match events.
- * 
+ *
  * @param server - The existing HTTP or HTTPS server to attach the WebSocket server to.
  * @returns An object with a function to broadcast new match creation events.
  */
 export function attachWebSocketServer(
   server: import("http").Server | import("https").Server
-) {
+): WebSocketServerHandle {
   // Create the WebSocket server on path "/ws" with a max payload of 1 MB
   const wss = new WebSocketServer({
     server,
@@ -37,8 +43,29 @@ export function attachWebSocketServer(
     maxPayload: 1024 * 1024,
   });
 
-  // When a client connects...
-  wss.on("connection", (socket: WebSocket) => {
+  // When a client connects... req is Node's IncomingMessage (upgrade request), not Express
+  wss.on("connection", async (socket: WebSocket, req) => {
+    if (wsArcjet) {
+      try {
+        const decision = await wsArcjet.protect(
+          incomingMessageToFetchRequest(req)
+        );
+
+        if (decision.isDenied()) {
+          const code = decision.reason.isRateLimit() ? 1013 : 1008;
+          const reason = decision.reason.isRateLimit()
+            ? "Rate Limit Exceeded"
+            : "Forbidden";
+          socket.close(code, reason);
+          return;
+        }
+      } catch (error) {
+        console.error("WS Connection error:", error);
+        socket.close(1011, "Internal Server Error");
+        return;
+      }
+    }
+
     const hbSocket = socket as HeartbeatWebSocket;
 
     // Mark the socket as alive for heartbeat checking

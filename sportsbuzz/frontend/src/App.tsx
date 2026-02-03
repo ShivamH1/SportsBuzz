@@ -1,54 +1,36 @@
-import { Button } from "@/components/ui/button"
+import { Header } from "@/components/layout/Header"
 import { useSportsStore } from "@/store/useSportsStore"
 import { useMatches } from "@/hooks/useMatches"
 import { useWebSocket } from "@/hooks/useWebSocket"
-import { cn } from "@/lib/utils"
 import { Toaster } from "@/components/ui/sonner"
+import { NewMatchBanner } from "@/components/matches/NewMatchBanner"
 
 function App() {
   // Initialize WebSocket and data fetching
   useWebSocket()
   const { isLoading, error } = useMatches()
 
-  const wsConnected = useSportsStore((state) => state.wsConnected)
-  const newMatchesCount = useSportsStore((state) => state.newMatchesCount)
-  const dismissNewMatchesBanner = useSportsStore((state) => state.dismissNewMatchesBanner)
+  const matches = useSportsStore((state) => state.matches)
 
   if (isLoading) return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="neo-border bg-brand-yellow p-6 font-bold text-2xl animate-bounce">
-        LOADING SPOTRZ...
+    <div className="min-h-screen flex items-center justify-center bg-background p-6">
+      <div className="neo-border bg-brand-yellow p-8 font-black text-3xl neo-shadow animate-bounce uppercase tracking-tighter">
+        Loading Spotrz...
       </div>
     </div>
   )
 
   if (error) return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="neo-border bg-red-400 p-6 font-bold text-2xl">
-        FAILED TO LOAD MATCHES. CHECK API.
+    <div className="min-h-screen flex items-center justify-center bg-background p-6">
+      <div className="neo-border bg-red-400 p-8 font-black text-3xl neo-shadow uppercase tracking-tighter">
+        Connection Error. Check API.
       </div>
     </div>
   )
 
   return (
-    <div className="app-container gap-6">
-      {/* Header Bar */}
-      <header className="neo-border bg-brand-yellow p-6 flex items-center justify-between rounded-xl relative overflow-hidden">
-        <div>
-          <h1 className="text-4xl font-black tracking-tighter uppercase">Spotrz</h1>
-          <p className="font-bold text-sm opacity-80">Real-time match data demo</p>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <div className={cn(
-            "neo-border bg-white px-4 py-2 flex items-center gap-2 rounded-full font-bold text-xs uppercase transition-colors",
-            wsConnected ? "text-emerald-600" : "text-red-500"
-          )}>
-            <div className={cn("w-3 h-3 rounded-full border-2 border-black", wsConnected ? "bg-emerald-500" : "bg-red-500")} />
-            {wsConnected ? 'Live Connected' : 'Disconnected'}
-          </div>
-        </div>
-      </header>
+    <div className="app-container gap-8">
+      <Header />
 
       {/* Main Content Area */}
       <main className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-8">
@@ -56,29 +38,16 @@ function App() {
         {/* Left Column: Matches */}
         <section className="space-y-6">
           <div className="flex items-center justify-between px-2">
-            <div className="flex items-center gap-3">
-              <div className="w-1.5 h-6 bg-brand-blue neo-border" />
-              <h2 className="text-2xl font-black uppercase tracking-tight">Current Matches</h2>
+            <div className="flex items-center gap-4">
+              <div className="w-2 h-8 bg-brand-blue neo-border" />
+              <h2 className="text-3xl font-black uppercase tracking-tighter">Current Matches</h2>
             </div>
-            <div className="neo-border bg-black text-white px-3 py-1 font-bold text-xs rounded">
-              API: 11
+            <div className="neo-border bg-black text-white px-3 py-1.5 font-black text-xs rounded uppercase tracking-widest shadow-[2px_2px_0px_0px_rgba(255,221,0,1)]">
+              API: {Object.keys(matches).length}
             </div>
           </div>
 
-          {/* New Match Banner */}
-          {newMatchesCount > 0 && (
-            <div className="neo-border bg-brand-yellow p-4 rounded-xl flex items-center justify-between animate-in slide-in-from-top duration-300">
-              <p className="font-bold">{newMatchesCount} new matches added</p>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="neo-border bg-white hover:bg-zinc-100 rounded-lg h-8 px-4 font-black text-xs uppercase"
-                onClick={dismissNewMatchesBanner}
-              >
-                Dismiss
-              </Button>
-            </div>
-          )}
+          <NewMatchBanner />
 
           {/* Match Grid will go here */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

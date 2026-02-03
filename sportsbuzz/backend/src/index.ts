@@ -3,6 +3,7 @@ import { matchesRouter } from "./routes/matches";
 import "dotenv/config";
 import http from "http";
 import { attachWebSocketServer } from "./ws/server";
+import { securityMiddleware } from "./arcjet";
 
 const PORT = process.env.PORT || 8000;
 const HOST = process.env.HOST || "0.0.0.0";
@@ -11,6 +12,7 @@ const app = express();
 const server = http.createServer(app);
 
 app.use(express.json());
+app.use(securityMiddleware());
 
 app.get("/health", (req, res) => {
   res.status(200).send("OK");
@@ -18,7 +20,8 @@ app.get("/health", (req, res) => {
 app.use("/matches", matchesRouter);
 
 const { broadcastMatchCreated } = attachWebSocketServer(server);
-// This statement makes the broadcastMatchCreated function available on app.locals so that it can be accessed from other parts of the app (e.g., in route handlers or middleware) via req.app.locals.broadcastMatchCreated.
+// This statement makes the broadcastMatchCreated function available on app.locals so that it can be accessed from other parts of the app 
+// (e.g., in route handlers or middleware) via req.app.locals.broadcastMatchCreated.
 app.locals.broadcastMatchCreated = broadcastMatchCreated;
 
 server.listen(PORT, Number(HOST), () => {

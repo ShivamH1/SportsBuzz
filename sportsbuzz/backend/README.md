@@ -287,6 +287,9 @@ backend/
 │   │   └── commentary.ts    # Zod schemas (list query, create body, match id param)
 │   └── utils/
 │       └── matchStatus.ts    # getMatchStatus, syncMatchStatus
+│   ├── data/
+│   │   └── data.json        # Seed data (matches + commentary feed)
+│   └── seed.js              # Seed script (POSTs to API; requires API_URL, server running)
 ├── drizzle.config.ts        # Drizzle Kit config (schema, migrations out dir)
 ├── package.json
 ├── tsconfig.json
@@ -297,15 +300,19 @@ backend/
 
 ## Environment Variables
 
-| Variable         | Required | Description                                                |
-| ---------------- | -------- | ---------------------------------------------------------- |
-| `DATABASE_URL`   | Yes      | Neon PostgreSQL connection string                          |
-| `ARCJET_API_KEY` | Yes      | Arcjet API key (shield, bot detection, rate limiting)      |
-| `PORT`           | No       | Server port (default: `8000`)                              |
-| `HOST`           | No       | Bind address (default: `0.0.0.0`)                          |
-| `ARCJET_ENV`     | No       | `DRY_RUN` to log only, or `LIVE` (default) to enforce       |
+| Variable                       | Required | Description                                                                 |
+| ------------------------------ | -------- | --------------------------------------------------------------------------- |
+| `DATABASE_URL`                 | Yes      | Neon PostgreSQL connection string                                           |
+| `ARCJET_API_KEY`               | Yes      | Arcjet API key (shield, bot detection, rate limiting)                        |
+| `API_URL`                      | Yes*     | Base URL of the running API (e.g. `http://localhost:8000`) for `bun run seed` |
+| `PORT`                         | No       | Server port (default: `8000`)                                               |
+| `HOST`                         | No       | Bind address (default: `0.0.0.0`)                                           |
+| `ARCJET_ENV`                   | No       | `DRY_RUN` to log only, or `LIVE` (default) to enforce                        |
+| `DELAY_MS`                     | No       | Delay in ms between commentary posts when seeding (default: `250`)         |
+| `SEED_MATCH_DURATION_MINUTES`  | No       | Match duration in minutes for seed (default: `120`)                          |
+| `SEED_FORCE_LIVE`              | No       | Set to `1` or `true` to treat seed matches as live                          |
 
-Create a `.env` in the project root (see `.env.example` if present). **Do not commit real credentials.**
+\* `API_URL` is required only when running `bun run seed`. Create a `.env` in the project root (see `.env.example` if present). **Do not commit real credentials.**
 
 ---
 
@@ -342,6 +349,16 @@ bun run db:generate   # generate migrations from schema
 bun run db:migrate    # run migrations
 bun run db:studio     # open Drizzle Studio
 ```
+
+**Seed data (from `src/data/data.json`):**
+
+The seed script creates matches and posts commentary via the REST API. **The server must be running** (e.g. in another terminal: `bun run dev`). Set `API_URL` in `.env` to the server base URL (e.g. `http://localhost:8000`).
+
+```bash
+bun run seed
+```
+
+Optional env vars: `DELAY_MS` (delay between commentary posts, default `250`), `SEED_MATCH_DURATION_MINUTES` (default `120`), `SEED_FORCE_LIVE` (treat matches as live when `1`/`true`).
 
 Server listens on `HOST:PORT` (default `0.0.0.0:8000`). Health check: `GET http://localhost:8000/health` → `200 OK`. WebSocket: `ws://localhost:8000/ws`.
 

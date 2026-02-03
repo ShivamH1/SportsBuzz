@@ -1,114 +1,114 @@
-import { Activity, Clock, Bell, Wifi, WifiOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Toaster } from "@/components/ui/sonner"
-import { toast } from "sonner"
 import { useSportsStore } from "@/store/useSportsStore"
 import { useMatches } from "@/hooks/useMatches"
 import { useWebSocket } from "@/hooks/useWebSocket"
 import { cn } from "@/lib/utils"
+import { Toaster } from "@/components/ui/sonner"
 
 function App() {
-  // Initialize WebSocket and initial data fetching
+  // Initialize WebSocket and data fetching
   useWebSocket()
   const { isLoading, error } = useMatches()
 
-  const matches = useSportsStore((state) => state.matches)
   const wsConnected = useSportsStore((state) => state.wsConnected)
-  const updateMatch = useSportsStore((state) => state.updateMatch)
   const newMatchesCount = useSportsStore((state) => state.newMatchesCount)
   const dismissNewMatchesBanner = useSportsStore((state) => state.dismissNewMatchesBanner)
 
-  const simulateUpdate = () => {
-    // Just for UI testing while backend is local
-    updateMatch(1, { homeScore: 3 })
-    toast.success("Goal! Lions FC scores!", {
-      description: "Match: Lions FC vs Tigers United",
-      icon: <Bell className="h-4 w-4" />,
-    })
-  }
+  if (isLoading) return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="neo-border bg-brand-yellow p-6 font-bold text-2xl animate-bounce">
+        LOADING SPOTRZ...
+      </div>
+    </div>
+  )
 
-  if (isLoading) return <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-400">Loading SportsBuzz...</div>
-  if (error) return <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-red-500">Failed to load matches.</div>
+  if (error) return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="neo-border bg-red-400 p-6 font-bold text-2xl">
+        FAILED TO LOAD MATCHES. CHECK API.
+      </div>
+    </div>
+  )
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-50 p-6">
-      <div className="max-w-4xl mx-auto space-y-8">
-        <header className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">SportsBuzz Live</h1>
-            <div className="flex items-center gap-2 mt-1">
-              <span className={cn(
-                "flex items-center gap-1.6 text-xs font-medium px-2 py-0.5 rounded-full",
-                wsConnected ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"
-              )}>
-                {wsConnected ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-                {wsConnected ? 'Live Connection Active' : 'Disconnected'}
-              </span>
-              <p className="text-zinc-400 text-sm">Real-time match updates</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            {newMatchesCount > 0 && (
-              <Button variant="secondary" size="sm" onClick={dismissNewMatchesBanner}>
-                {newMatchesCount} New Matches
-              </Button>
-            )}
-            <Button variant="outline" onClick={simulateUpdate}>
-              Simulate Update
-            </Button>
-          </div>
-        </header>
-
-        <div className="grid gap-6 md:grid-cols-2">
-          {Object.values(matches).length === 0 ? (
-            <div className="col-span-full text-center py-12 text-zinc-500 border border-dashed border-zinc-800 rounded-lg">
-              No matches found.
-            </div>
-          ) : (
-            Object.values(matches).map((match) => (
-              <Card key={match.id} className="bg-zinc-900 border-zinc-800 text-zinc-50">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <Badge variant={match.status === 'live' ? 'destructive' : 'secondary'} className={match.status === 'live' ? 'animate-pulse' : ''}>
-                    {match.status.toUpperCase()}
-                  </Badge>
-                  <div className="flex items-center gap-1 text-sm text-zinc-400">
-                    <Clock className="h-4 w-4" />
-                    {new Date(match.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex justify-between items-center text-xl font-semibold">
-                    <span>{match.homeTeam}</span>
-                    <span className="text-3xl font-bold bg-zinc-800 px-3 py-1 rounded">
-                      {match.homeScore} : {match.awayScore}
-                    </span>
-                    <span>{match.awayTeam}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          )}
+    <div className="app-container gap-6">
+      {/* Header Bar */}
+      <header className="neo-border bg-brand-yellow p-6 flex items-center justify-between rounded-xl relative overflow-hidden">
+        <div>
+          <h1 className="text-4xl font-black tracking-tighter uppercase">Spotrz</h1>
+          <p className="font-bold text-sm opacity-80">Real-time match data demo</p>
         </div>
 
-        <Card className="bg-zinc-900 border-zinc-800 text-zinc-50">
-          <header className="px-6 py-4 border-b border-zinc-800">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Activity className="h-5 w-5 text-emerald-500" />
-              Live Commentary
-            </CardTitle>
-          </header>
-          <CardContent className="pt-6">
-            <ScrollArea className="h-[200px] w-full rounded-md border border-zinc-800 p-4">
-              <div className="space-y-4">
-                <p className="text-sm text-zinc-500 italic">Select a match to view live commentary events.</p>
+        <div className="flex items-center gap-4">
+          <div className={cn(
+            "neo-border bg-white px-4 py-2 flex items-center gap-2 rounded-full font-bold text-xs uppercase transition-colors",
+            wsConnected ? "text-emerald-600" : "text-red-500"
+          )}>
+            <div className={cn("w-3 h-3 rounded-full border-2 border-black", wsConnected ? "bg-emerald-500" : "bg-red-500")} />
+            {wsConnected ? 'Live Connected' : 'Disconnected'}
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <main className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-8">
+
+        {/* Left Column: Matches */}
+        <section className="space-y-6">
+          <div className="flex items-center justify-between px-2">
+            <div className="flex items-center gap-3">
+              <div className="w-1.5 h-6 bg-brand-blue neo-border" />
+              <h2 className="text-2xl font-black uppercase tracking-tight">Current Matches</h2>
+            </div>
+            <div className="neo-border bg-black text-white px-3 py-1 font-bold text-xs rounded">
+              API: 11
+            </div>
+          </div>
+
+          {/* New Match Banner */}
+          {newMatchesCount > 0 && (
+            <div className="neo-border bg-brand-yellow p-4 rounded-xl flex items-center justify-between animate-in slide-in-from-top duration-300">
+              <p className="font-bold">{newMatchesCount} new matches added</p>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="neo-border bg-white hover:bg-zinc-100 rounded-lg h-8 px-4 font-black text-xs uppercase"
+                onClick={dismissNewMatchesBanner}
+              >
+                Dismiss
+              </Button>
+            </div>
+          )}
+
+          {/* Match Grid will go here */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Placeholder for Match Cards */}
+            <div className="col-span-full border-4 border-dashed border-black/10 rounded-3xl py-20 flex flex-col items-center justify-center opacity-50 italic">
+              <p className="font-bold text-xl">Match Grid Implementation Task Pending...</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Right Column: Sidebar (Commentary) */}
+        <aside className="hidden lg:block">
+          <div className="neo-border bg-white rounded-3xl h-[calc(100vh-280px)] sticky top-8 flex flex-col overflow-hidden">
+            {/* Sidebar content will go here */}
+            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4 opacity-40">
+              <div className="w-16 h-16 rounded-full bg-brand-yellow neo-border flex items-center justify-center">
+                {/* Video Icon placeholder */}
+                <div className="w-8 h-5 neo-border bg-white rounded-sm" />
               </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
-      </div>
+              <div>
+                <h3 className="text-xl font-black uppercase">No Match Selected</h3>
+                <p className="font-medium text-sm mt-2">
+                  Select a match from the list to view live commentary and real-time updates.
+                </p>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </main>
+
       <Toaster position="top-right" richColors />
     </div>
   )

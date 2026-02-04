@@ -42,7 +42,17 @@ matchesRouter.post("/", async (req: Request, res: Response) => {
     });
   }
 
-  const { startTime, endTime, homeScore, awayScore, ...rest } = parsed.data;
+  const {
+    startTime,
+    endTime,
+    homeScore,
+    awayScore,
+    homeWickets,
+    awayWickets,
+    ...rest
+  } = parsed.data;
+
+  const isCricket = rest.sport?.toLowerCase() === "cricket";
 
   try {
     const result = await db
@@ -53,6 +63,8 @@ matchesRouter.post("/", async (req: Request, res: Response) => {
         endTime: new Date(endTime),
         homeScore: homeScore ?? 0,
         awayScore: awayScore ?? 0,
+        homeWickets: homeWickets ?? 0,
+        awayWickets: awayWickets ?? 0,
         status: getMatchStatus(startTime, endTime) as MatchStatus,
       })
       .returning();

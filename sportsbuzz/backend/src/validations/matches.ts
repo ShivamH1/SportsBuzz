@@ -23,6 +23,8 @@ export const createMatchSchema = z
     endTime: z.iso.datetime(),
     homeScore: z.coerce.number().int().nonnegative().optional(),
     awayScore: z.coerce.number().int().nonnegative().optional(),
+    homeWickets: z.coerce.number().int().nonnegative().optional(),
+    awayWickets: z.coerce.number().int().nonnegative().optional(),
   })
   .superRefine((data, ctx) => {
     const start = new Date(data.startTime);

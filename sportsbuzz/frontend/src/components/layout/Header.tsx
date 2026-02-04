@@ -1,6 +1,7 @@
 import { useSportsStore } from "@/store/useSportsStore";
 import { cn } from "@/lib/utils";
 import { Activity, Radio } from "lucide-react";
+import { ThemeToggle } from "./ThemeToggle";
 
 export function Header() {
     const wsConnected = useSportsStore((state) => state.wsConnected);
@@ -14,13 +15,16 @@ export function Header() {
 
             <div className="relative z-10 flex flex-col items-center sm:items-start">
                 <div className="flex items-center gap-2">
-                    <h1 className="text-5xl font-black tracking-tighter uppercase leading-none drop-shadow-sm">Spotrz</h1>
+                    <h1 className="text-5xl font-black tracking-tighter uppercase leading-none drop-shadow-sm text-black">SportsBuzz</h1>
                     <div className="bg-black text-brand-yellow px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest mt-1">v2.0</div>
                 </div>
-                <p className="font-bold text-xs mt-2 opacity-70 uppercase tracking-widest flex items-center gap-2">
-                    <Activity className="w-3 h-3" />
-                    Premium Sports Intelligence Hub
-                </p>
+                <div className="flex items-center gap-4 mt-2">
+                    <p className="font-bold text-xs opacity-70 uppercase tracking-widest flex items-center gap-2 text-black">
+                        <Activity className="w-3 h-3" />
+                        Premium Sports Intelligence Hub
+                    </p>
+                    <ThemeToggle />
+                </div>
             </div>
 
             <div className="flex items-center gap-4 mt-6 sm:mt-0 relative z-10">
@@ -32,12 +36,12 @@ export function Header() {
 
                 {/* Connection Status Badge */}
                 <div className={cn(
-                    "neo-border bg-white px-5 py-3 flex items-center gap-3 rounded-2xl font-black text-sm uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all group-hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] group-hover:translate-x-0.5 group-hover:translate-y-0.5",
-                    wsConnected ? "text-black" : "text-zinc-400"
+                    "neo-border bg-card px-5 py-3 flex items-center gap-3 rounded-2xl font-black text-sm uppercase shadow-[4px_4px_0px_0px_var(--border)] transition-all group-hover:shadow-[2px_2px_0px_0px_var(--border)] group-hover:translate-x-0.5 group-hover:translate-y-0.5",
+                    wsConnected ? "text-foreground" : "text-foreground/40"
                 )}>
                     <div className="relative flex items-center justify-center">
                         <div className={cn(
-                            "w-4 h-4 rounded-full border-2 border-black relative z-10 transition-colors duration-500",
+                            "w-4 h-4 rounded-full border-2 border-border relative z-10 transition-colors duration-500",
                             wsConnected ? "bg-brand-green" : "bg-red-500"
                         )} />
                         {wsConnected && (

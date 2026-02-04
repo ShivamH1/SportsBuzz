@@ -17,38 +17,62 @@
   --color-brand-pink: #ff70d1;
   --color-brand-green: #00ff88;
 
-  --color-background: #f8f9fa;
-  --color-foreground: #000000;
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --color-card: var(--card);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
 
   --font-outfit: "Outfit", sans-serif;
+}
+
+:root {
+  --bg: #f8f9fa;
+  --text: #000000;
+  --card: #ffffff;
+  --border: #000000;
+  --grid: #e5e7eb;
+  --muted: #f1f3f5;
+}
+
+.dark {
+  --bg: #1a1a1a;
+  --text: #f8f9fa;
+  --card: #222222;
+  --border: #ffffff;
+  --grid: #2d2d2d;
+  --muted: #333333;
 }
 
 @layer base {
   body {
     @apply bg-background text-foreground font-outfit antialiased selection:bg-brand-yellow selection:text-black;
-    background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+    background-image: radial-gradient(var(--grid) 1px, transparent 1px);
     background-size: 32px 32px;
+    transition:
+      background-color 0.3s ease,
+      color 0.3s ease;
   }
 }
 
 @utility neo-border {
-  border: 3px solid black;
+  border: 3px solid var(--border);
 }
 
 @utility neo-border-thin {
-  border: 2px solid black;
+  border: 2px solid var(--border);
 }
 
 @utility neo-shadow-sm {
-  box-shadow: 3px 3px 0px 0px rgba(0, 0, 0, 1);
+  box-shadow: 3px 3px 0px 0px var(--border);
 }
 
 @utility neo-shadow {
-  box-shadow: 6px 6px 0px 0px rgba(0, 0, 0, 1);
+  box-shadow: 6px 6px 0px 0px var(--border);
 }
 
 @utility neo-shadow-lg {
-  box-shadow: 10px 10px 0px 0px rgba(0, 0, 0, 1);
+  box-shadow: 10px 10px 0px 0px var(--border);
 }
 
 @utility neo-glow {
@@ -72,7 +96,7 @@
 }
 
 .neo-card {
-  @apply neo-border bg-white rounded-2xl transition-all duration-300;
+  @apply neo-border bg-card rounded-2xl transition-all duration-300;
 }
 
 .neo-card:hover {

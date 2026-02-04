@@ -8,8 +8,17 @@ import { motion, AnimatePresence } from "framer-motion"
 
 import { MatchCard } from "@/components/matches/MatchCard"
 import { CommentarySidebar } from "@/components/matches/CommentarySidebar"
+import { ThemeProvider } from "@/context/ThemeContext"
 
 function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
+  )
+}
+
+function AppContent() {
   // Initialize WebSocket and data fetching
   useWebSocket()
   const { isLoading, error } = useMatches()
@@ -25,15 +34,15 @@ function App() {
 
   if (isLoading) return (
     <div className="min-h-screen flex items-center justify-center bg-background p-6">
-      <div className="neo-border bg-brand-yellow p-8 font-black text-3xl neo-shadow animate-bounce uppercase tracking-tighter">
-        Loading Spotrz...
+      <div className="neo-border bg-brand-yellow p-8 font-black text-3xl neo-shadow animate-bounce uppercase tracking-tighter text-black">
+        Loading SportsBuzz...
       </div>
     </div>
   )
 
   if (error) return (
     <div className="min-h-screen flex items-center justify-center bg-background p-6">
-      <div className="neo-border bg-red-400 p-8 font-black text-3xl neo-shadow uppercase tracking-tighter">
+      <div className="neo-border bg-red-400 p-8 font-black text-3xl neo-shadow uppercase tracking-tighter text-black">
         Connection Error. Check API.
       </div>
     </div>
@@ -51,9 +60,9 @@ function App() {
           <div className="flex items-center justify-between px-2">
             <div className="flex items-center gap-4">
               <div className="w-2 h-8 bg-brand-blue neo-border" />
-              <h2 className="text-3xl font-black uppercase tracking-tighter">Current Matches</h2>
+              <h2 className="text-3xl font-black uppercase tracking-tighter text-foreground">Current Matches</h2>
             </div>
-            <div className="neo-border bg-black text-white px-3 py-1.5 font-black text-xs rounded uppercase tracking-widest shadow-[2px_2px_0px_0px_rgba(255,221,0,1)]">
+            <div className="neo-border bg-black text-brand-yellow px-3 py-1.5 font-black text-xs rounded uppercase tracking-widest neo-shadow-sm">
               API: {Object.keys(matches).length}
             </div>
           </div>
@@ -70,9 +79,9 @@ function App() {
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 0.5 }}
-                  className="col-span-full border-4 border-dashed border-black/10 rounded-3xl py-20 flex flex-col items-center justify-center italic"
+                  className="col-span-full border-4 border-dashed border-border/10 rounded-3xl py-20 flex flex-col items-center justify-center italic"
                 >
-                  <p className="font-bold text-xl uppercase">No matches found</p>
+                  <p className="font-bold text-xl uppercase text-foreground">No matches found</p>
                 </motion.div>
               ) : (
                 sortedMatches.map((match) => (
@@ -85,7 +94,7 @@ function App() {
 
         {/* Right Column: Sidebar (Commentary) */}
         <aside className="hidden lg:block">
-          <div className="neo-border bg-white rounded-3xl h-[calc(100vh-200px)] sticky top-8 flex flex-col overflow-hidden neo-shadow">
+          <div className="neo-border bg-card rounded-3xl h-[calc(100vh-200px)] sticky top-8 flex flex-col overflow-hidden neo-shadow transition-colors duration-300">
             <CommentarySidebar />
           </div>
         </aside>

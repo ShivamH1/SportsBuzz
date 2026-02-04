@@ -61,15 +61,15 @@ export function MatchCard({ match }: MatchCardProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className={cn(
-                "neo-card p-6 flex flex-col gap-6",
-                isSelected ? "border-black neo-shadow-lg ring-4 ring-brand-blue/30 bg-blue-50/30" : ""
+                "neo-card p-6 flex flex-col gap-6 transition-colors duration-300",
+                isSelected ? "border-brand-blue neo-shadow-lg ring-4 ring-brand-blue/30 bg-brand-blue/5" : ""
             )}
         >
             {/* Top row: Sport and Live status */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-6 bg-black rounded-full" />
-                    <Badge variant="outline" className="neo-border-thin py-0.5 px-3 font-black text-[10px] uppercase tracking-widest bg-zinc-50 rounded-lg">
+                    <div className="w-1.5 h-6 bg-brand-yellow rounded-full" />
+                    <Badge variant="outline" className="neo-border-thin py-0.5 px-3 font-black text-[10px] uppercase tracking-widest bg-muted rounded-lg">
                         {match.sport}
                     </Badge>
                 </div>
@@ -110,8 +110,8 @@ export function MatchCard({ match }: MatchCardProps) {
                         </AnimatePresence>
                         <div className={cn(
                             "neo-border px-4 py-2 font-black text-3xl rounded-xl min-w-[80px] text-center transition-all duration-500 flex items-baseline justify-center gap-1",
-                            isSelected ? "bg-brand-yellow neo-shadow-sm" : "bg-white",
-                            showHomeIndicator && "bg-brand-green scale-110 !neo-shadow-sm"
+                            isSelected ? "bg-brand-yellow text-black neo-shadow-sm" : "bg-card",
+                            showHomeIndicator && "bg-brand-green text-black scale-110 !neo-shadow-sm"
                         )}>
                             <span>{match.homeScore}</span>
                             {match.sport?.toLowerCase() === 'cricket' && (
@@ -146,8 +146,8 @@ export function MatchCard({ match }: MatchCardProps) {
                         </AnimatePresence>
                         <div className={cn(
                             "neo-border px-4 py-2 font-black text-3xl rounded-xl min-w-[80px] text-center transition-all duration-500 flex items-baseline justify-center gap-1",
-                            isSelected ? "bg-brand-yellow neo-shadow-sm" : "bg-white",
-                            showAwayIndicator && "bg-brand-green scale-110 !neo-shadow-sm"
+                            isSelected ? "bg-brand-yellow text-black neo-shadow-sm" : "bg-card",
+                            showAwayIndicator && "bg-brand-green text-black scale-110 !neo-shadow-sm"
                         )}>
                             <span>{match.awayScore}</span>
                             {match.sport?.toLowerCase() === 'cricket' && (
@@ -159,10 +159,10 @@ export function MatchCard({ match }: MatchCardProps) {
             </div>
 
             {/* Footer Row */}
-            <div className="flex items-end justify-between mt-auto pt-6 border-t-4 border-black/5">
+            <div className="flex items-end justify-between mt-auto pt-6 border-t-4 border-foreground/5">
                 <div className="flex flex-col">
-                    <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 leading-none">Kickoff Time</span>
-                    <div className="h-10 px-4 flex items-center bg-zinc-100 rounded-xl neo-border-thin font-black text-xs uppercase tracking-tight">
+                    <span className="text-[9px] font-black text-foreground/40 uppercase tracking-widest mb-1.5 leading-none">Kickoff Time</span>
+                    <div className="h-10 px-4 flex items-center bg-muted rounded-xl neo-border-thin font-black text-xs uppercase tracking-tight">
                         {format(new Date(match.startTime), 'p')}
                     </div>
                 </div>
@@ -172,14 +172,14 @@ export function MatchCard({ match }: MatchCardProps) {
                         <Button
                             size="sm"
                             onClick={handleWatch}
-                            className="neo-btn h-10 px-8 rounded-xl text-[11px] bg-brand-yellow hover:neo-shadow-sm flex items-center justify-center font-extrabold uppercase"
+                            className="neo-btn h-10 px-8 rounded-xl text-[11px] bg-brand-yellow text-black hover:neo-shadow-sm flex items-center justify-center font-extrabold uppercase"
                         >
                             Watch Feed
                         </Button>
                     ) : (
                         <Button
                             size="sm"
-                            className="neo-btn bg-brand-blue hover:bg-brand-blue/80 h-10 px-6 rounded-xl text-[11px] flex items-center font-extrabold uppercase border-black"
+                            className="neo-btn bg-brand-blue text-black hover:bg-brand-blue/80 h-10 px-6 rounded-xl text-[11px] flex items-center font-extrabold uppercase border-border"
                             onClick={handleClose}
                         >
                             <span className="text-xl mr-1.5 leading-none opacity-50 relative -top-0.5">×</span>

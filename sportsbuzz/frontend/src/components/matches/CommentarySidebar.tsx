@@ -2,7 +2,8 @@ import { useSportsStore } from "@/store/useSportsStore";
 import { useCommentary } from "@/hooks/useCommentary";
 import { format } from "date-fns";
 import { Tv, MessageSquare, Zap, Target, User, Info, Loader2, Radio } from "lucide-react";
-import { Virtuoso } from "react-virtuoso";
+import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
+import { useEffect, useRef } from "react";
 
 const EMPTY_ARRAY: any[] = [];
 
@@ -10,9 +11,21 @@ export function CommentarySidebar() {
     const activeMatchId = useSportsStore((state) => state.activeMatchId);
     const matches = useSportsStore((state) => state.matches);
     const commentary = useSportsStore((state) => state.commentaryByMatchId[activeMatchId || 0] ?? EMPTY_ARRAY);
+    const virtuosoRef = useRef<VirtuosoHandle>(null);
 
     const { isLoading, isError, refetch } = useCommentary(activeMatchId);
     const activeMatch = activeMatchId ? matches[activeMatchId] : null;
+
+    // Auto-scroll to top when new commentary arrives
+    useEffect(() => {
+        if (virtuosoRef.current && commentary.length > 0) {
+            virtuosoRef.current.scrollToIndex({
+                index: 0,
+                behavior: 'smooth',
+                align: 'start'
+            });
+        }
+    }, [commentary.length]);
 
     if (!activeMatchId) {
         return (
@@ -67,7 +80,9 @@ export function CommentarySidebar() {
                     <p className="text-[9px] font-black uppercase text-white/40 tracking-[0.2em] leading-none">Currently Broadcasting</p>
                 </div>
                 <h4 className="font-black text-sm uppercase truncate tracking-tight text-brand-yellow">
-                    {activeMatch?.homeTeam} <span className="text-white/30 mx-1">VS</span> {activeMatch?.awayTeam}
+                    {activeMatch?.homeTeam} <span className="bg-white/10 px-1.5 py-0.5 rounded-md text-white mx-1">{activeMatch?.homeScore}</span>
+                    <span className="text-white/30 mx-1">:</span>
+                    <span className="bg-white/10 px-1.5 py-0.5 rounded-md text-white mx-1">{activeMatch?.awayScore}</span> {activeMatch?.awayTeam}
                 </h4>
             </div>
 
@@ -109,6 +124,7 @@ export function CommentarySidebar() {
                     </div>
                 ) : (
                     <Virtuoso
+                        ref={virtuosoRef}
                         data={commentary}
                         totalCount={commentary.length}
                         initialTopMostItemIndex={0}

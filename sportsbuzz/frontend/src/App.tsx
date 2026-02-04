@@ -26,7 +26,7 @@ function App() {
   if (isLoading) return (
     <div className="min-h-screen flex items-center justify-center bg-background p-6">
       <div className="neo-border bg-brand-yellow p-8 font-black text-3xl neo-shadow animate-bounce uppercase tracking-tighter">
-        Loading Spotrz...
+        Loading SportsBuzz...
       </div>
     </div>
   )

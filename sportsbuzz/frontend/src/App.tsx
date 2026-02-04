@@ -24,6 +24,7 @@ function AppContent() {
   const { isLoading, error } = useMatches()
 
   const matches = useSportsStore((state) => state.matches)
+  const activeMatchId = useSportsStore((state) => state.activeMatchId)
 
   // Sort matches: Live first, then by startTime
   const sortedMatches = Object.values(matches).sort((a, b) => {
@@ -92,13 +93,46 @@ function AppContent() {
           </motion.div>
         </section>
 
-        {/* Right Column: Sidebar (Commentary) */}
+        {/* Right Column: Sidebar (Commentary) - Desktop */}
         <aside className="hidden lg:block">
           <div className="neo-border bg-card rounded-3xl h-[calc(100vh-200px)] sticky top-8 flex flex-col overflow-hidden neo-shadow transition-colors duration-300">
             <CommentarySidebar />
           </div>
         </aside>
       </main>
+
+      {/* Mobile Commentary Drawer */}
+      <AnimatePresence>
+        {matches[activeMatchId || 0] && (
+          <motion.div
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            className="fixed inset-x-0 bottom-0 z-50 lg:hidden h-[85vh] bg-card rounded-t-3xl neo-border border-b-0 shadow-[0_-10px_40px_rgba(0,0,0,0.2)] overflow-hidden flex flex-col"
+          >
+            {/* Handle Bar */}
+            <div className="h-1.5 w-12 bg-foreground/10 rounded-full mx-auto my-3 flex-shrink-0" />
+
+            <div className="flex-1 overflow-hidden">
+              <CommentarySidebar />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Mobile Backdrop */}
+      <AnimatePresence>
+        {matches[activeMatchId || 0] && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => useSportsStore.getState().setActiveMatch(null)}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden"
+          />
+        )}
+      </AnimatePresence>
 
       <Toaster position="bottom-right" richColors closeButton visibleToasts={3} expand={false} />
     </div>

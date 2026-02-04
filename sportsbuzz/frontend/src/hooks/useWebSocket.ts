@@ -13,11 +13,24 @@ export const useWebSocket = () => {
 
   const setupListeners = useCallback(() => {
     // Basic connection status from native lifecycle
-    const unsubOpen = wsClient.on("open", () => setWsConnected(true));
-    const unsubClose = wsClient.on("close", () => setWsConnected(false));
+    const unsubOpen = wsClient.on("open", () => {
+      setWsConnected(true);
+      toast.success("Live Feed Connected", {
+        description: "You're now receiving real-time updates.",
+      });
+    });
+    const unsubClose = wsClient.on("close", () => {
+      setWsConnected(false);
+      toast.warning("Live Feed Disconnected", {
+        description: "Attempting to reconnect...",
+      });
+    });
     const unsubError = wsClient.on("error", (err: any) => {
       setWsConnected(false);
-      toast.error(`WebSocket Error: ${err?.message || "Connection failed"}`);
+      // Only show error if it's not a standard close
+      if (err) {
+        toast.error(`WebSocket Error: ${err?.message || "Connection failed"}`);
+      }
     });
 
     const unsubMatchCreated = wsClient.on("match_created", (msg) => {
@@ -40,11 +53,16 @@ export const useWebSocket = () => {
       }
     });
 
+    const unsubMatchUpdated = wsClient.on("match_updated", (msg) => {
+      useSportsStore.getState().updateMatch(msg.data.id, msg.data);
+    });
+
     return () => {
       unsubOpen();
       unsubClose();
       unsubError();
       unsubMatchCreated();
+      unsubMatchUpdated();
       unsubCommentary();
       unsubServerErrorMessage();
     };

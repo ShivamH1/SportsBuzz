@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -9,55 +10,58 @@
   --radius-lg: 12px;
   --radius-xl: 16px;
   --radius-2xl: 24px;
+  --radius-3xl: 32px;
 
-  --color-brand-yellow: #ffdd00;
-  --color-brand-blue: #aee2ff;
+  --color-brand-yellow: #ffec00;
+  --color-brand-blue: #70d1ff;
+  --color-brand-pink: #ff70d1;
+  --color-brand-green: #00ff88;
 
-  --color-background: #f4f4f4;
+  --color-background: #f8f9fa;
   --color-foreground: #000000;
+
+  --font-outfit: "Outfit", sans-serif;
 }
 
 @layer base {
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-background text-foreground font-outfit antialiased selection:bg-brand-yellow selection:text-black;
+    background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+    background-size: 32px 32px;
   }
 }
 
 @utility neo-border {
+  border: 3px solid black;
+}
+
+@utility neo-border-thin {
   border: 2px solid black;
+}
+
+@utility neo-shadow-sm {
+  box-shadow: 3px 3px 0px 0px rgba(0, 0, 0, 1);
 }
 
 @utility neo-shadow {
-  box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+  box-shadow: 6px 6px 0px 0px rgba(0, 0, 0, 1);
 }
 
-/* Custom Component Classes using standard CSS to avoid @apply issues in build */
-.neo-button {
-  border: 2px solid black;
-  background-color: white;
-  padding: 0.5rem 1rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  transition: transform 0.1s;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+@utility neo-shadow-lg {
+  box-shadow: 10px 10px 0px 0px rgba(0, 0, 0, 1);
 }
 
-.neo-button:active {
-  transform: translate(2px, 2px);
+@utility neo-glow {
+  box-shadow: 0 0 20px rgba(255, 236, 0, 0.4);
 }
 
-.neo-button-primary {
-  background-color: #ffdd00;
-}
-
+/* Custom Component Classes */
 .app-container {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  padding: 1.5rem;
-  max-width: 1600px;
+  padding: 1rem;
+  max-width: 1400px;
   margin: 0 auto;
 }
 
@@ -65,4 +69,57 @@
   .app-container {
     padding: 2rem;
   }
+}
+
+.neo-card {
+  @apply neo-border bg-white rounded-2xl transition-all duration-300;
+}
+
+.neo-card:hover {
+  @apply -translate-x-1 -translate-y-1 neo-shadow;
+}
+
+.neo-btn {
+  @apply neo-border-thin px-4 py-2 font-black uppercase text-xs tracking-widest transition-all active:translate-x-0.5 active:translate-y-0.5;
+}
+
+/* Custom scrollbar for Neo-Brutalism - sleek & modern */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #00000030;
+  border-radius: 10px;
+  transition: background 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #00000060;
+}
+
+/* Specific scrollbar for the Commentary Feed (Virtuoso) */
+[data-virtuoso-scroller] {
+  scrollbar-width: thin;
+  scrollbar-color: #ffec00 transparent;
+}
+
+[data-virtuoso-scroller]::-webkit-scrollbar {
+  width: 5px;
+}
+
+[data-virtuoso-scroller]::-webkit-scrollbar-thumb {
+  background: #ffec00; /* Brand Yellow */
+  border-radius: 0;
+  border: 1px solid black;
+}
+
+/* Fix for Sonner stacking/overlapping */
+[data-sonner-toaster] {
+  --toast-width: 380px !important;
 }

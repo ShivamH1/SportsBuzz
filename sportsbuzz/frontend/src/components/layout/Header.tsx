@@ -13,23 +13,36 @@ export function Header() {
             {/* Background Decorative Element */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-black/5 rounded-full -mr-16 -mt-16 transition-transform duration-700 group-hover:scale-150" />
 
-            <div className="relative z-10 flex flex-col items-center sm:items-start">
-                <div className="flex items-center gap-2">
-                    <h1 className="text-5xl font-black tracking-tighter uppercase leading-none drop-shadow-sm text-black">SportsBuzz</h1>
-                    <div className="bg-black text-brand-yellow px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest mt-1">v2.0</div>
+            <div className="flex items-center gap-2">
+                <div className="relative group/logo">
+                    <img
+                        src="/logo.svg"
+                        alt="SportsBuzz Logo"
+                        className="w-20 h-20 transition-all duration-500 transform group-hover/logo:scale-110 drop-shadow-md"
+                    />
                 </div>
-                <div className="flex items-center gap-4 mt-2">
-                    <p className="font-bold text-xs opacity-70 uppercase tracking-widest flex items-center gap-2 text-black">
-                        <Activity className="w-3 h-3" />
-                        Premium Sports Intelligence Hub
-                    </p>
-                    <ThemeToggle />
+
+                <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-6xl font-black tracking-tighter uppercase leading-none flex items-baseline select-none">
+                            <span className="text-black">Sports</span>
+                            <span className="text-white drop-shadow-[3px_3px_0px_rgba(0,0,0,1)] ml-1">Buzz</span>
+                        </h1>
+                        <div className="bg-black text-brand-yellow px-2 py-1.5 rounded text-[10px] font-black uppercase tracking-widest mt-1 neo-shadow-sm">v2.0</div>
+                    </div>
+                    <div className="flex items-center gap-4 mt-1">
+                        <p className="font-extrabold text-[10px] sm:text-[11px] text-black uppercase tracking-[0.4em] flex items-center gap-2">
+                            <Activity className="w-3.5 h-3.5" />
+                            Live Sports Intelligence
+                        </p>
+                        <ThemeToggle />
+                    </div>
                 </div>
             </div>
 
             <div className="flex items-center gap-4 mt-6 sm:mt-0 relative z-10">
                 {/* Statistics */}
-                <div className="flex flex-col items-end mr-2 hidden md:flex">
+                <div className="flex flex-col items-end mr-2 hidden md:flex text-black">
                     <span className="text-[10px] font-black uppercase opacity-40 leading-none">Global Feed</span>
                     <span className="text-xl font-black leading-none">{apiCount} Matches</span>
                 </div>

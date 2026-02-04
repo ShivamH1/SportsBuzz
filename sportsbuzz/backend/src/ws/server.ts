@@ -1,5 +1,5 @@
 import WebSocket, { WebSocketServer, type Server } from "ws";
-import type { Match } from "../db/schema";
+import type { Match, Commentary } from "../db/schema";
 import { incomingMessageToFetchRequest, wsArcjet } from "../arcjet";
 
 const WS_PATH = "/ws";
@@ -91,24 +91,6 @@ function handleMessage(socket: WebSocket, data: any) {
   }
 }
 
-/** Write a minimal HTTP error response on the raw socket and destroy it. */
-function rejectUpgrade(
-  socket: import("net").Socket,
-  statusCode: number,
-  statusMessage: string,
-  body?: string,
-) {
-  const msg = body ?? statusMessage;
-  socket.write(
-    `HTTP/1.1 ${statusCode} ${statusMessage}\r\n` +
-      "Content-Type: text/plain\r\n" +
-      `Content-Length: ${Buffer.byteLength(msg, "utf8")}\r\n` +
-      "Connection: close\r\n\r\n" +
-      msg,
-  );
-  socket.destroy();
-}
-
 // Extend WebSocket type to support isAlive and subscriptions
 interface ExtendedWebSocket extends WebSocket {
   isAlive: boolean;
@@ -118,7 +100,8 @@ interface ExtendedWebSocket extends WebSocket {
 /** Return type of {@link attachWebSocketServer}: object with broadcast helpers. */
 export type WebSocketServerHandle = {
   broadcastMatchCreated: (match: Match) => void;
-  broadcastCommentary: (matchId: number, commentary: string) => void;
+  broadcastMatchUpdated: (id: number, updates: Partial<Match>) => void;
+  broadcastCommentary: (matchId: number, commentary: Commentary) => void;
 };
 
 /**
@@ -130,53 +113,35 @@ export function attachWebSocketServer(
   server: import("http").Server | import("https").Server,
 ): WebSocketServerHandle {
   const wss = new WebSocketServer({
-    noServer: true,
+    server,
+    path: WS_PATH,
     maxPayload: 1024 * 1024,
   });
 
-  server.on("upgrade", async (req, socket, head) => {
-    const path = req.url?.split("?")[0];
-    if (path !== WS_PATH) {
-      rejectUpgrade(socket, 404, "Not Found");
-      return;
-    }
-
+  wss.on("connection", async (socket: WebSocket, req) => {
     if (wsArcjet) {
       try {
         const decision = await wsArcjet.protect(
           incomingMessageToFetchRequest(req),
         );
         if (decision.isDenied()) {
-          if (decision.reason.isRateLimit()) {
-            rejectUpgrade(
-              socket,
-              429,
-              "Too Many Requests",
-              "Rate Limit Exceeded",
-            );
-            return;
-          }
-          rejectUpgrade(socket, 403, "Forbidden", "Access Denied");
+          socket.send(
+            JSON.stringify({
+              type: "error",
+              message: decision.reason.isRateLimit()
+                ? "Rate Limit Exceeded"
+                : "Access Denied",
+            }),
+          );
+          socket.close(1008, "Policy Violation");
           return;
         }
       } catch (error) {
-        console.error("WS upgrade protection error:", error);
-        rejectUpgrade(
-          socket,
-          503,
-          "Service Unavailable",
-          "Internal Server Error",
-        );
-        return;
+        console.error("WS connection protection error:", error);
+        // Continue for now or close if security is paramount
       }
     }
 
-    wss.handleUpgrade(req, socket, head, (ws) => {
-      wss.emit("connection", ws, req);
-    });
-  });
-
-  wss.on("connection", (socket: WebSocket) => {
     const hbSocket = socket as ExtendedWebSocket;
 
     hbSocket.isAlive = true;
@@ -239,10 +204,14 @@ export function attachWebSocketServer(
    * @param matchId - The match ID to send the commentary to.
    * @param commentary - The commentary to send.
    */
-  function broadcastCommentary(matchId: number, commentary: string) {
-    broadcastToMatch(matchId, { type: "commentary", data: commentary });
+  function broadcastMatchUpdated(id: number, updates: Partial<Match>) {
+    broadcastToAll(wss, { type: "match_updated", data: { ...updates, id } });
+  }
+
+  function broadcastCommentary(matchId: number, data: Commentary) {
+    broadcastToMatch(matchId, { type: "commentary", data });
   }
 
   // Return the broadcasting function for use elsewhere in the app
-  return { broadcastMatchCreated, broadcastCommentary };
+  return { broadcastMatchCreated, broadcastMatchUpdated, broadcastCommentary };
 }

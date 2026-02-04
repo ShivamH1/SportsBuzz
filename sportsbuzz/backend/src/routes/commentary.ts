@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { db } from "../db/db";
-import { commentary } from "../db/schema";
+import { commentary, matches } from "../db/schema";
 import {
   createCommentarySchema,
   listCommentaryQuerySchema,
@@ -98,6 +98,43 @@ commentaryRouter.post("/", async (req: Request, res: Response) => {
 
     if (res.app.locals.broadcastCommentary) {
       res.app.locals.broadcastCommentary(result?.matchId, result);
+    }
+
+    // Handle score updates if it's a GOAL
+    if (eventType?.toUpperCase() === "GOAL") {
+      const matchId = paramsResult.data.id;
+      const team = bodyResult.data.team; // e.g. "HOME" or "AWAY" or specific team name
+
+      // Fetch current match to know which score to increment
+      const [matchRecord] = await db
+        .select()
+        .from(matches)
+        .where(eq(matches.id, matchId))
+        .limit(1);
+
+      if (matchRecord) {
+        let updates: Partial<typeof matches.$inferSelect> = {};
+
+        // Simple logic: if 'team' matches homeTeam exactly or is the string "HOME"
+        const isHome =
+          team === matchRecord.homeTeam || team?.toUpperCase() === "HOME";
+        const isAway =
+          team === matchRecord.awayTeam || team?.toUpperCase() === "AWAY";
+
+        if (isHome) {
+          updates.homeScore = (matchRecord.homeScore || 0) + 1;
+        } else if (isAway) {
+          updates.awayScore = (matchRecord.awayScore || 0) + 1;
+        }
+
+        if (Object.keys(updates).length > 0) {
+          await db.update(matches).set(updates).where(eq(matches.id, matchId));
+
+          if (res.app.locals.broadcastMatchUpdated) {
+            res.app.locals.broadcastMatchUpdated(matchId, updates);
+          }
+        }
+      }
     }
 
     return res.status(201).json({ data: result });

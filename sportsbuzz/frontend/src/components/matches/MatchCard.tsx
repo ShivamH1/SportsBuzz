@@ -109,11 +109,14 @@ export function MatchCard({ match }: MatchCardProps) {
                             )}
                         </AnimatePresence>
                         <div className={cn(
-                            "neo-border px-4 py-2 font-black text-3xl rounded-xl min-w-[60px] text-center transition-all duration-500",
+                            "neo-border px-4 py-2 font-black text-3xl rounded-xl min-w-[80px] text-center transition-all duration-500 flex items-baseline justify-center gap-1",
                             isSelected ? "bg-brand-yellow neo-shadow-sm" : "bg-white",
                             showHomeIndicator && "bg-brand-green scale-110 !neo-shadow-sm"
                         )}>
-                            {match.homeScore}
+                            <span>{match.homeScore}</span>
+                            {match.sport?.toLowerCase() === 'cricket' && (
+                                <span className="text-xl opacity-40">/{match.homeWickets}</span>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -142,11 +145,14 @@ export function MatchCard({ match }: MatchCardProps) {
                             )}
                         </AnimatePresence>
                         <div className={cn(
-                            "neo-border px-4 py-2 font-black text-3xl rounded-xl min-w-[60px] text-center transition-all duration-500",
+                            "neo-border px-4 py-2 font-black text-3xl rounded-xl min-w-[80px] text-center transition-all duration-500 flex items-baseline justify-center gap-1",
                             isSelected ? "bg-brand-yellow neo-shadow-sm" : "bg-white",
                             showAwayIndicator && "bg-brand-green scale-110 !neo-shadow-sm"
                         )}>
-                            {match.awayScore}
+                            <span>{match.awayScore}</span>
+                            {match.sport?.toLowerCase() === 'cricket' && (
+                                <span className="text-xl opacity-40">/{match.awayWickets}</span>
+                            )}
                         </div>
                     </div>
                 </div>

@@ -80,9 +80,15 @@ export function CommentarySidebar() {
                     <p className="text-[9px] font-black uppercase text-white/40 tracking-[0.2em] leading-none">Currently Broadcasting</p>
                 </div>
                 <h4 className="font-black text-sm uppercase truncate tracking-tight text-brand-yellow">
-                    {activeMatch?.homeTeam} <span className="bg-white/10 px-1.5 py-0.5 rounded-md text-white mx-1">{activeMatch?.homeScore}</span>
+                    {activeMatch?.homeTeam} <span className="bg-white/10 px-1.5 py-0.5 rounded-md text-white mx-1 text-xs">
+                        {activeMatch?.homeScore}
+                        {activeMatch?.sport?.toLowerCase() === 'cricket' && `/${activeMatch?.homeWickets}`}
+                    </span>
                     <span className="text-white/30 mx-1">:</span>
-                    <span className="bg-white/10 px-1.5 py-0.5 rounded-md text-white mx-1">{activeMatch?.awayScore}</span> {activeMatch?.awayTeam}
+                    <span className="bg-white/10 px-1.5 py-0.5 rounded-md text-white mx-1 text-xs">
+                        {activeMatch?.awayScore}
+                        {activeMatch?.sport?.toLowerCase() === 'cricket' && `/${activeMatch?.awayWickets}`}
+                    </span> {activeMatch?.awayTeam}
                 </h4>
             </div>
 

@@ -35,6 +35,7 @@ export type ServerMessageType =
   | "subscribed"
   | "unsubscribed"
   | "match_created"
+  | "match_updated"
   | "commentary"
   | "error";
 
@@ -63,6 +64,11 @@ export interface CommentaryMessage {
   data: CommentaryEvent;
 }
 
+export interface MatchUpdatedMessage {
+  type: "match_updated";
+  data: Partial<Match> & { id: number };
+}
+
 export interface ErrorMessage {
   type: "error";
   message: string;
@@ -73,6 +79,7 @@ export type ServerMessage =
   | SubscribedMessage
   | UnsubscribedMessage
   | MatchCreatedMessage
+  | MatchUpdatedMessage
   | CommentaryMessage
   | ErrorMessage;
 

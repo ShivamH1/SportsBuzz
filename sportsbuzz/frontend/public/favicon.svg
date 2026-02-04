@@ -1,0 +1,19 @@
+<svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Yellow Lightning Bolt with Black Outline for Favicon -->
+  <path d="M40 10L65 10L50 45L75 45L40 90L50 50L30 50L40 10Z" fill="#FFDD00" stroke="#000000" stroke-width="2" stroke-linejoin="round" />
+  
+  <!-- Bee Wings (Left) -->
+  <path d="M42 38C30 35 22 25 24 18C26 11 35 8 45 15C50 18 52 25 50 32" fill="#222222" />
+  <path d="M44 42C35 42 28 35 30 28C32 21 40 18 48 22" fill="#222222" opacity="0.9" />
+  
+  <!-- Bee Wings (Right) -->
+  <path d="M58 38C70 35 78 25 76 18C74 11 65 8 55 15C50 18 48 25 50 32" fill="#222222" />
+  <path d="M56 42C65 42 72 35 70 28C68 21 60 18 52 22" fill="#222222" opacity="0.9" />
+  
+  <!-- Bee Head -->
+  <circle cx="50" cy="40" r="6" fill="#222222" />
+  
+  <!-- Bee Abdomen (Striped) -->
+  <path d="M46 45C44 55 46 70 50 78C54 70 56 55 54 45L46 45Z" fill="#222222" />
+  <path d="M46 52H54M46 60H54M47 68H53" stroke="#FFDD00" stroke-width="2.5" />
+</svg>

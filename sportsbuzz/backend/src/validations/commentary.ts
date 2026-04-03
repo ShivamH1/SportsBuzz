@@ -19,4 +19,12 @@ export const createCommentarySchema = z.object({
   message: z.string().min(1),
   metadata: z.record(z.string(), z.any()).optional(),
   tags: z.array(z.string()).optional(),
+  scoreDelta: z
+    .object({
+      home: z.number().int().optional(),
+      away: z.number().int().optional(),
+      homeWickets: z.number().int().optional(),
+      awayWickets: z.number().int().optional(),
+    })
+    .optional(),
 });

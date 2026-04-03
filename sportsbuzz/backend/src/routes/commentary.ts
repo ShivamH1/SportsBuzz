@@ -100,39 +100,70 @@ commentaryRouter.post("/", async (req: Request, res: Response) => {
       res.app.locals.broadcastCommentary(result?.matchId, result);
     }
 
-    // Handle score updates if it's a GOAL
-    if (eventType?.toUpperCase() === "GOAL") {
-      const matchId = paramsResult.data.id;
-      const team = bodyResult.data.team; // e.g. "HOME" or "AWAY" or specific team name
+    // Handle score and wicket updates
+    const matchId = paramsResult.data.id;
+    const team = bodyResult.data.team;
+    const { scoreDelta } = bodyResult.data;
 
-      // Fetch current match to know which score to increment
-      const [matchRecord] = await db
-        .select()
-        .from(matches)
-        .where(eq(matches.id, matchId))
-        .limit(1);
+    // Fetch current match to decide how to update
+    const [matchRecord] = await db
+      .select()
+      .from(matches)
+      .where(eq(matches.id, matchId))
+      .limit(1);
 
-      if (matchRecord) {
-        let updates: Partial<typeof matches.$inferSelect> = {};
+    if (matchRecord) {
+      let updates: Partial<typeof matches.$inferSelect> = {};
 
-        // Simple logic: if 'team' matches homeTeam exactly or is the string "HOME"
-        const isHome =
-          team === matchRecord.homeTeam || team?.toUpperCase() === "HOME";
-        const isAway =
-          team === matchRecord.awayTeam || team?.toUpperCase() === "AWAY";
+      const isHome =
+        team === matchRecord.homeTeam || team?.toUpperCase() === "HOME";
+      const isAway =
+        team === matchRecord.awayTeam || team?.toUpperCase() === "AWAY";
 
-        if (isHome) {
-          updates.homeScore = (matchRecord.homeScore || 0) + 1;
-        } else if (isAway) {
-          updates.awayScore = (matchRecord.awayScore || 0) + 1;
+      // 1. Use explicit scoreDelta if provided
+      if (scoreDelta) {
+        if (scoreDelta.home)
+          updates.homeScore = (matchRecord.homeScore || 0) + scoreDelta.home;
+        if (scoreDelta.away)
+          updates.awayScore = (matchRecord.awayScore || 0) + scoreDelta.away;
+        if (scoreDelta.homeWickets)
+          updates.homeWickets =
+            (matchRecord.homeWickets || 0) + scoreDelta.homeWickets;
+        if (scoreDelta.awayWickets)
+          updates.awayWickets =
+            (matchRecord.awayWickets || 0) + scoreDelta.awayWickets;
+      }
+      // 2. Otherwise fall back to eventType logic
+      else if (eventType) {
+        const type = eventType.toUpperCase();
+
+        // Scoring regular points/goals/runs
+        let points = 0;
+        if (type === "GOAL" || type === "RUN") points = 1;
+        else if (type === "BASKET") points = 2;
+        else if (type === "THREE") points = 3;
+        else if (type === "FOUR") points = 4;
+        else if (type === "SIX") points = 6;
+
+        if (points > 0) {
+          if (isHome) updates.homeScore = (matchRecord.homeScore || 0) + points;
+          else if (isAway)
+            updates.awayScore = (matchRecord.awayScore || 0) + points;
         }
 
-        if (Object.keys(updates).length > 0) {
-          await db.update(matches).set(updates).where(eq(matches.id, matchId));
+        // Handling Wickets
+        if (type === "WICKET") {
+          if (isHome) updates.homeWickets = (matchRecord.homeWickets || 0) + 1;
+          else if (isAway)
+            updates.awayWickets = (matchRecord.awayWickets || 0) + 1;
+        }
+      }
 
-          if (res.app.locals.broadcastMatchUpdated) {
-            res.app.locals.broadcastMatchUpdated(matchId, updates);
-          }
+      if (Object.keys(updates).length > 0) {
+        await db.update(matches).set(updates).where(eq(matches.id, matchId));
+
+        if (res.app.locals.broadcastMatchUpdated) {
+          res.app.locals.broadcastMatchUpdated(matchId, updates);
         }
       }
     }

@@ -22,7 +22,7 @@ export function NewMatchBanner() {
                         <Button
                             variant="ghost"
                             size="sm"
-                            className="neo-border bg-white hover:bg-zinc-100 rounded-xl h-9 px-6 font-black text-xs uppercase transition-transform active:scale-95"
+                            className="neo-border-thin bg-card hover:bg-muted rounded-xl h-9 px-6 font-black text-xs uppercase transition-transform active:scale-95 text-foreground"
                             onClick={dismissNewMatchesBanner}
                         >
                             Dismiss

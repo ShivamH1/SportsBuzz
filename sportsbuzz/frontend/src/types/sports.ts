@@ -10,6 +10,8 @@ export interface Match {
   endTime: string | null;
   homeScore: number;
   awayScore: number;
+  homeWickets: number;
+  awayWickets: number;
   createdAt: string;
   commentary?: CommentaryEvent[];
 }

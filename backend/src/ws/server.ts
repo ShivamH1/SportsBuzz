@@ -6,6 +6,19 @@ const WS_PATH = "/ws";
 
 const matchSubscribers = new Map();
 
+// Extend WebSocket type to support isAlive and subscriptions
+interface ExtendedWebSocket extends WebSocket {
+  isAlive: boolean;
+  subscriptions: Set<number>;
+}
+
+/** Return type of {@link attachWebSocketServer}: object with broadcast helpers. */
+export type WebSocketServerHandle = {
+  broadcastMatchCreated: (match: Match) => void;
+  broadcastMatchUpdated: (id: number, updates: Partial<Match>) => void;
+  broadcastCommentary: (matchId: number, commentary: Commentary) => void;
+};
+
 function subscribe(matchId: number, socket: WebSocket) {
   if (!matchSubscribers.has(matchId)) {
     matchSubscribers.set(matchId, new Set());
@@ -90,19 +103,6 @@ function handleMessage(socket: WebSocket, data: any) {
     return;
   }
 }
-
-// Extend WebSocket type to support isAlive and subscriptions
-interface ExtendedWebSocket extends WebSocket {
-  isAlive: boolean;
-  subscriptions: Set<number>;
-}
-
-/** Return type of {@link attachWebSocketServer}: object with broadcast helpers. */
-export type WebSocketServerHandle = {
-  broadcastMatchCreated: (match: Match) => void;
-  broadcastMatchUpdated: (id: number, updates: Partial<Match>) => void;
-  broadcastCommentary: (matchId: number, commentary: Commentary) => void;
-};
 
 /**
  * Attaches a WebSocket server to an existing HTTP or HTTPS server.

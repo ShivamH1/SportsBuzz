@@ -45,6 +45,5 @@ LiveFeedService.init(
 );
 
 server.listen(PORT, Number(HOST), () => {
-  const baseUrl =
-    HOST === "0.0.0.0" ? `http://localhost:${PORT}` : `http://${HOST}:${PORT}`;
+  console.log("Server is Up!");
 });

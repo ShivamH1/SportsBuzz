@@ -61,8 +61,8 @@ export class LiveFeedService {
       await this.generateLiveEvents();
     });
 
-    // Run every 1 minute to check if we need new matches
-    this.spawnerTask = schedule("*/1 * * * *", async () => {
+    // Run every 5 minutes to check if we need new matches
+    this.spawnerTask = schedule("*/5 * * * *", async () => {
       await this.spawnRandomMatch();
     });
 

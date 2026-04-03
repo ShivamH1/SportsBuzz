@@ -217,42 +217,6 @@ Open [http://localhost:5173](http://localhost:5173) — you should see live matc
 
 ---
 
-## 🌐 Deployment
-
-### Frontend → Vercel
-
-1. Import your GitHub repository on [Vercel](https://vercel.com).
-2. Set **Root Directory** to `frontend`.
-3. Set **Build Command** to `bun run build` (or `npm run build`).
-4. Set **Output Directory** to `dist`.
-5. Add environment variables:
-
-| Variable | Value |
-| :--- | :--- |
-| `VITE_API_URL` | `https://your-backend.onrender.com` |
-| `VITE_WS_URL` | `wss://your-backend.onrender.com/ws` |
-
-### Backend → Render
-
-1. Connect your GitHub repository on [Render](https://render.com).
-2. Create a **Web Service** with these settings:
-   - **Build Command**: `bun install && bun run build`
-   - **Start Command**: `bun run start`
-3. Add environment variables:
-
-| Variable | Value |
-| :--- | :--- |
-| `PORT` | `10000` |
-| `HOST` | `0.0.0.0` |
-| `DATABASE_URL` | Your Neon connection string |
-| `ARCJET_API_KEY` | Your Arcjet key |
-| `ARCJET_ENV` | `LIVE` |
-| `FRONTEND_URL` | `https://your-frontend.vercel.app` |
-
-> **Note:** Use `wss://` (not `ws://`) for WebSocket URLs in production since Render serves over HTTPS.
-
----
-
 ## 📡 API Reference
 
 | Method | Endpoint | Description |

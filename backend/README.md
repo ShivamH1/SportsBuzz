@@ -287,6 +287,8 @@ backend/
 │   │   └── commentary.ts    # Zod schemas (list query, create body, match id param)
 │   └── utils/
 │       └── matchStatus.ts    # getMatchStatus, syncMatchStatus
+│   ├── services/
+│   │   └── liveFeedService.ts # Background job: auto-commentary, auto-scores, auto-spawner
 │   ├── data/
 │   │   └── data.json        # Seed data (matches + commentary feed)
 │   └── seed.js              # Seed script (POSTs to API; requires API_URL, server running)
@@ -489,3 +491,33 @@ Schema and types are defined in `src/db/schema.ts`; run `db:generate` and `db:mi
 - Otherwise: **live**
 
 Used during match creation to set `status`. `syncMatchStatus` can be used for background status updates if needed.
+
+---
+
+## Background Services (**LiveFeedService**)
+
+The backend includes a robust background service (`src/services/liveFeedService.ts`) that runs using `node-cron`. This service ensures the platform feels "alive" without manual intervention.
+
+### 1. Automatic Commentary & Scores
+- **Interval**: Runs every 30 seconds.
+- **Behavior**: For every match currently marked as `live`, the system has a ~35% chance to generate a sport-specific event (Goal, Wicket, Three-pointer, etc.).
+- **Real-time**: Every generated event is persisted to the DB and broadcasted instantly to all connected WebSocket clients.
+
+### 2. Automatic Match Spawner
+- **Interval**: Runs every 5 minutes.
+- **Behavior**: If there are fewer than 3 `live` matches in the database, the system randomly selects a sport and two teams from its internal pool and spawns a **brand new match**.
+- **Cycle**: New matches are scheduled to last 2 hours (Football/Basketball) or 8 hours (Cricket) and will automatically transition to `finished` when their time is up.
+
+---
+
+## Deployment Guide (Render)
+
+1. **Setup**: Connect your GitHub repository to [Render](https://render.com/).
+2. **Environment**:
+   - **Build Command**: `bun install && bun run build`
+   - **Start Command**: `bun run start` (Starts the optimized `dist/index.js` bundle).
+3. **Environment Variables**:
+   - `DATABASE_URL`: Your Neon PostgreSQL connection string.
+   - `ARCJET_API_KEY`: Your Arcjet security key.
+   - `FRONTEND_URL`: The URL of your deployed frontend (e.g., `https://your-app.vercel.app`).
+   - `API_URL`: The base URL of your Render service.

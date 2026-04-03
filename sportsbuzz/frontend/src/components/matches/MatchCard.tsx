@@ -109,13 +109,13 @@ export function MatchCard({ match }: MatchCardProps) {
                             )}
                         </AnimatePresence>
                         <div className={cn(
-                            "neo-border px-4 py-2 font-black text-3xl rounded-xl min-w-[80px] text-center transition-all duration-500 flex items-baseline justify-center gap-1",
+                            "neo-border px-3 py-1.5 sm:px-4 sm:py-2 font-black text-2xl sm:text-3xl rounded-xl min-w-[70px] sm:min-w-[80px] text-center transition-all duration-500 flex items-baseline justify-center gap-1",
                             isSelected ? "bg-brand-yellow text-black neo-shadow-sm" : "bg-card",
                             showHomeIndicator && "bg-brand-green text-black scale-110 !neo-shadow-sm"
                         )}>
                             <span>{match.homeScore}</span>
                             {match.sport?.toLowerCase() === 'cricket' && (
-                                <span className="text-xl opacity-40">/{match.homeWickets}</span>
+                                <span className="text-sm sm:text-lg opacity-40">/{match.homeWickets}</span>
                             )}
                         </div>
                     </div>
@@ -145,13 +145,13 @@ export function MatchCard({ match }: MatchCardProps) {
                             )}
                         </AnimatePresence>
                         <div className={cn(
-                            "neo-border px-4 py-2 font-black text-3xl rounded-xl min-w-[80px] text-center transition-all duration-500 flex items-baseline justify-center gap-1",
+                            "neo-border px-3 py-1.5 sm:px-4 sm:py-2 font-black text-2xl sm:text-3xl rounded-xl min-w-[70px] sm:min-w-[80px] text-center transition-all duration-500 flex items-baseline justify-center gap-1",
                             isSelected ? "bg-brand-yellow text-black neo-shadow-sm" : "bg-card",
                             showAwayIndicator && "bg-brand-green text-black scale-110 !neo-shadow-sm"
                         )}>
                             <span>{match.awayScore}</span>
                             {match.sport?.toLowerCase() === 'cricket' && (
-                                <span className="text-xl opacity-40">/{match.awayWickets}</span>
+                                <span className="text-sm sm:text-lg opacity-40">/{match.awayWickets}</span>
                             )}
                         </div>
                     </div>

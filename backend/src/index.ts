@@ -7,6 +7,8 @@ import { securityMiddleware } from "./arcjet";
 import { commentaryRouter } from "./routes/commentary";
 import cors from "cors";
 
+import { LiveFeedService } from "./services/liveFeedService";
+
 const PORT = process.env.PORT || 8000;
 const HOST = process.env.HOST || "0.0.0.0";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
@@ -35,12 +37,14 @@ app.locals.broadcastMatchCreated = broadcastMatchCreated;
 app.locals.broadcastMatchUpdated = broadcastMatchUpdated;
 app.locals.broadcastCommentary = broadcastCommentary;
 
+// Initialize Live Feed Generator
+LiveFeedService.init(
+  broadcastCommentary,
+  broadcastMatchUpdated,
+  broadcastMatchCreated,
+);
+
 server.listen(PORT, Number(HOST), () => {
   const baseUrl =
     HOST === "0.0.0.0" ? `http://localhost:${PORT}` : `http://${HOST}:${PORT}`;
-
-  console.log(`Server is running on ${baseUrl}`);
-  console.log(
-    `WebSocket server is running on ${baseUrl.replace("http://", "ws://")}/ws`,
-  );
 });

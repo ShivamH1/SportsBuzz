@@ -603,46 +603,28 @@ async function seed() {
   //   );
   // }
 
+  // To allow LiveFeedService to take over, we only seed the beginning of the match.
+  const MAX_ENTRIES_PER_MATCH = 5;
+  const matchEntryCounts = new Map();
+
   for (let i = 0; i < randomizedFeed.length; i += 1) {
     const entry = randomizedFeed[i];
     const target = getMatchEntry(entry, matchMap);
     if (!target) {
-      console.warn(
-        "⚠️  Skipping entry: matchId missing or not found:",
-        entry.message,
-      );
       continue;
     }
+    const matchId = target.match.id;
+    const currentCount = matchEntryCounts.get(matchId) || 0;
+
+    if (currentCount >= MAX_ENTRIES_PER_MATCH) {
+      continue;
+    }
+
     const match = target.match;
-
     const row = await insertCommentary(match.id, entry);
-    console.log(`📣 [Match ${match.id}] ${row.message}`);
+    console.log(`📣 [Seed Match ${match.id}] ${row.message}`);
 
-    // NOTE: Score updates are intentionally disabled in this codebase.
-    // const isCricket = String(match.sport).toLowerCase() === "cricket";
-    // const delta = isCricket
-    //   ? cricketScoreDelta(entry, match, target)
-    //   : (scoreDeltaFromEntry(entry, match) ?? fakeScoreDelta(target));
-    // if (delta) {
-    //   target.score.home += delta.home;
-    //   target.score.away += delta.away;
-    //   await updateMatchScore(match.id, target.score.home, target.score.away);
-    //   console.log(
-    //     `📊 [Match ${match.id}] Score updated: ${target.score.home}-${target.score.away}`,
-    //   );
-    // }
-
-    // NOTE: Match status updates are intentionally disabled in this codebase.
-    // if (Number.isInteger(entry.matchId)) {
-    //   const remaining = (remainingByMatchId.get(entry.matchId) || 1) - 1;
-    //   if (remaining <= 0) {
-    //     remainingByMatchId.delete(entry.matchId);
-    //     await endMatch(match.id);
-    //     console.log(`🏁 [Match ${match.id}] Match finished.`);
-    //   } else {
-    //     remainingByMatchId.set(entry.matchId, remaining);
-    //   }
-    // }
+    matchEntryCounts.set(matchId, currentCount + 1);
 
     if (DELAY_MS > 0) {
       await new Promise((resolve) => setTimeout(resolve, DELAY_MS));

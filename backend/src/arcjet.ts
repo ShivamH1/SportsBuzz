@@ -17,7 +17,7 @@ import type {
  * an object with headers.get() (it does not accept Express's req.headers object).
  */
 function headersObjectToFetchHeaders(
-  headers: Record<string, string | string[] | undefined>
+  headers: Record<string, string | string[] | undefined>,
 ): Headers {
   const h = new Headers();
   for (const [key, value] of Object.entries(headers)) {
@@ -33,7 +33,7 @@ export function expressReqToFetchRequest(req: ExpressRequest): Request {
   return new Request(url, {
     method: req.method,
     headers: headersObjectToFetchHeaders(
-      req.headers as Record<string, string | string[] | undefined>
+      req.headers as Record<string, string | string[] | undefined>,
     ),
   });
 }
@@ -55,7 +55,7 @@ export function incomingMessageToFetchRequest(req: IncomingMessage): Request {
   return new Request(url, {
     method: req.method ?? "GET",
     headers: headersObjectToFetchHeaders(
-      (req.headers as Record<string, string | string[] | undefined>) ?? {}
+      (req.headers as Record<string, string | string[] | undefined>) ?? {},
     ),
   });
 }
@@ -99,7 +99,7 @@ export const wsArcjet = arcjetKey
 export function securityMiddleware(): (
   req: ExpressRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => Promise<void> {
   return async (req: ExpressRequest, res: Response, next: NextFunction) => {
     if (!httpArcjet) {

@@ -52,8 +52,6 @@ matchesRouter.post("/", async (req: Request, res: Response) => {
     ...rest
   } = parsed.data;
 
-  const isCricket = rest.sport?.toLowerCase() === "cricket";
-
   try {
     const result = await db
       .insert(matches)

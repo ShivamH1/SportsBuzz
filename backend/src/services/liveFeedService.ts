@@ -1,30 +1,81 @@
 import { type ScheduledTask, schedule } from "node-cron";
 import { db } from "../db/db";
-import { matches, commentary, type NewCommentary, type NewMatch } from "../db/schema";
+import {
+  matches,
+  commentary,
+  type NewCommentary,
+  type NewMatch,
+} from "../db/schema";
 import { eq, sql, and, ne, or, lt, gte } from "drizzle-orm";
 import { getMatchStatus } from "../utils/matchStatus";
 
 const TEAM_POOL = {
-  football: ["Arsenal FC", "Liverpool FC", "Real Madrid", "Barcelona", "AC Milan", "Inter Milan", "Manchester City", "Chelsea", "Bayern Munich", "PSG"],
-  cricket: ["India", "Australia", "England", "Pakistan", "South Africa", "New Zealand", "Sri Lanka", "Bangladesh", "West Indies", "Afghanistan"],
-  basketball: ["LA Lakers", "Boston Celtics", "Chicago Bulls", "Miami Heat", "Golden State Warriors", "Phoenix Suns", "Milwaukee Bucks", "Philadelphia 76ers"],
+  football: [
+    "Arsenal FC",
+    "Liverpool FC",
+    "Real Madrid",
+    "Barcelona",
+    "AC Milan",
+    "Inter Milan",
+    "Manchester City",
+    "Chelsea",
+    "Bayern Munich",
+    "PSG",
+  ],
+  cricket: [
+    "India",
+    "Australia",
+    "England",
+    "Pakistan",
+    "South Africa",
+    "New Zealand",
+    "Sri Lanka",
+    "Bangladesh",
+    "West Indies",
+    "Afghanistan",
+  ],
+  basketball: [
+    "LA Lakers",
+    "Boston Celtics",
+    "Chicago Bulls",
+    "Miami Heat",
+    "Golden State Warriors",
+    "Phoenix Suns",
+    "Milwaukee Bucks",
+    "Philadelphia 76ers",
+  ],
 };
 
 const SPORT_EVENTS = {
   football: [
-    { type: "pass", message: "A tactical build-up in the middle of the pitch." },
+    {
+      type: "pass",
+      message: "A tactical build-up in the middle of the pitch.",
+    },
     { type: "shot", message: "A powerful strike from outside the box!" },
-    { type: "goal", message: "GOAL!!! A clinical finish into the bottom corner." },
+    {
+      type: "goal",
+      message: "GOAL!!! A clinical finish into the bottom corner.",
+    },
     { type: "foul", message: "A rough challenge leads to a free kick." },
-    { type: "yellow_card", message: "The referee shoes a yellow card for that tackle." },
+    {
+      type: "yellow_card",
+      message: "The referee shoes a yellow card for that tackle.",
+    },
     { type: "corner", message: "An outswinging corner into a crowded box." },
     { type: "save", message: "What a save! The keeper tips it over the bar." },
   ],
   cricket: [
     { type: "run", message: "A quick single taken by the batsman." },
-    { type: "four", message: "FOUR! That's timed to perfection through the covers." },
+    {
+      type: "four",
+      message: "FOUR! That's timed to perfection through the covers.",
+    },
     { type: "six", message: "SIX!!! Cleared the boundary with ease." },
-    { type: "wicket", message: "OUT! The stumps are rattled. A huge breakthrough!" },
+    {
+      type: "wicket",
+      message: "OUT! The stumps are rattled. A huge breakthrough!",
+    },
     { type: "dot_ball", message: "A solid defensive stroke. No run." },
     { type: "wide", message: "Wide ball. The bowler needs to find his line." },
   ],
@@ -39,7 +90,10 @@ const SPORT_EVENTS = {
 };
 
 const DEFAULT_EVENTS = [
-  { type: "commentary", message: "The intensity is picking up as we approach the break." },
+  {
+    type: "commentary",
+    message: "The intensity is picking up as we approach the break.",
+  },
   { type: "commentary", message: "Both teams are looking for an opening." },
 ];
 
@@ -50,7 +104,11 @@ export class LiveFeedService {
   private static broadcastMatchUpdated: any = null;
   private static broadcastMatchCreated: any = null;
 
-  static init(broadcastCommentary: any, broadcastMatchUpdated: any, broadcastMatchCreated: any) {
+  static init(
+    broadcastCommentary: any,
+    broadcastMatchUpdated: any,
+    broadcastMatchCreated: any,
+  ) {
     this.broadcastCommentary = broadcastCommentary;
     this.broadcastMatchUpdated = broadcastMatchUpdated;
     this.broadcastMatchCreated = broadcastMatchCreated;
@@ -71,7 +129,10 @@ export class LiveFeedService {
 
   private static async spawnRandomMatch() {
     try {
-      const liveMatches = await db.select().from(matches).where(eq(matches.status, "live"));
+      const liveMatches = await db
+        .select()
+        .from(matches)
+        .where(eq(matches.status, "live"));
 
       // Keep at least 3 matches live at all times
       if (liveMatches.length >= 3) return;
@@ -105,15 +166,16 @@ export class LiveFeedService {
         endTime,
       };
 
-      const [savedMatch] = await db.insert(matches).values(newMatch).returning();
+      const [savedMatch] = await db
+        .insert(matches)
+        .values(newMatch)
+        .returning();
 
       if (!savedMatch) return;
 
       if (this.broadcastMatchCreated) {
         this.broadcastMatchCreated(savedMatch);
       }
-
-      console.log(`🆕 Automatically spawned new ${randomSport} match: ${homeTeam} vs ${awayTeam}`);
 
       // Add a kickoff commentary
       const kickoffEntry: NewCommentary = {
@@ -126,7 +188,10 @@ export class LiveFeedService {
         message: `Welcome to this live ${randomSport} match between ${homeTeam} and ${awayTeam}!`,
       };
 
-      const [savedCommentary] = await db.insert(commentary).values(kickoffEntry).returning();
+      const [savedCommentary] = await db
+        .insert(commentary)
+        .values(kickoffEntry)
+        .returning();
       if (this.broadcastCommentary && savedCommentary) {
         this.broadcastCommentary(savedMatch.id, savedCommentary);
       }
@@ -137,17 +202,22 @@ export class LiveFeedService {
 
   private static async syncAllMatches() {
     try {
-      const allMatches = await db.select().from(matches).where(ne(matches.status, "finished"));
+      const allMatches = await db
+        .select()
+        .from(matches)
+        .where(ne(matches.status, "finished"));
 
       for (const match of allMatches) {
         const nextStatus = getMatchStatus(match.startTime, match.endTime);
 
         if (nextStatus && nextStatus !== match.status) {
-          await db.update(matches).set({ status: nextStatus }).where(eq(matches.id, match.id));
+          await db
+            .update(matches)
+            .set({ status: nextStatus })
+            .where(eq(matches.id, match.id));
           if (this.broadcastMatchUpdated) {
             this.broadcastMatchUpdated(match.id, { status: nextStatus });
           }
-          console.log(`🔄 Match ${match.id} status synced to: ${nextStatus}`);
         }
       }
     } catch (error) {
@@ -168,7 +238,9 @@ export class LiveFeedService {
         // 35% chance to generate an event for this match in this tick
         if (Math.random() > 0.35) continue;
 
-        const events = SPORT_EVENTS[match.sport as keyof typeof SPORT_EVENTS] || DEFAULT_EVENTS;
+        const events =
+          SPORT_EVENTS[match.sport as keyof typeof SPORT_EVENTS] ||
+          DEFAULT_EVENTS;
         const randomEvent = events[Math.floor(Math.random() * events.length)];
 
         if (!randomEvent) continue;
@@ -182,7 +254,8 @@ export class LiveFeedService {
           .limit(1);
 
         const nextSequence = (lastCommentary[0]?.sequence ?? 0) + 1;
-        const currentMinute = (lastCommentary[0]?.minute ?? 0) + Math.floor(Math.random() * 2);
+        const currentMinute =
+          (lastCommentary[0]?.minute ?? 0) + Math.floor(Math.random() * 2);
 
         const team = Math.random() > 0.5 ? match.homeTeam : match.awayTeam;
         const isHome = team === match.homeTeam;
@@ -197,7 +270,10 @@ export class LiveFeedService {
           message: `${randomEvent.message} (${team})`,
         };
 
-        const [savedEntry] = await db.insert(commentary).values(newEntry).returning();
+        const [savedEntry] = await db
+          .insert(commentary)
+          .values(newEntry)
+          .returning();
 
         // Handle score updates
         let scoreUpdate: any = {};
@@ -222,7 +298,10 @@ export class LiveFeedService {
         }
 
         if (Object.keys(scoreUpdate).length > 0) {
-          await db.update(matches).set(scoreUpdate).where(eq(matches.id, match.id));
+          await db
+            .update(matches)
+            .set(scoreUpdate)
+            .where(eq(matches.id, match.id));
           if (this.broadcastMatchUpdated) {
             this.broadcastMatchUpdated(match.id, scoreUpdate);
           }
@@ -231,8 +310,6 @@ export class LiveFeedService {
         if (this.broadcastCommentary) {
           this.broadcastCommentary(match.id, savedEntry);
         }
-
-        console.log(`📣 Match ${match.id} - ${randomEvent.type}: ${newEntry.message}`);
       }
     } catch (error) {
       console.error("Error generating live events:", error);

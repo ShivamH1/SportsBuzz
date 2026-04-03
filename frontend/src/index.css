@@ -1,0 +1,149 @@
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap");
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+  --radius-3xl: 32px;
+
+  --color-brand-yellow: #ffec00;
+  --color-brand-blue: #70d1ff;
+  --color-brand-pink: #ff70d1;
+  --color-brand-green: #00ff88;
+
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --color-card: var(--card);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+
+  --font-outfit: "Outfit", sans-serif;
+}
+
+:root {
+  --bg: #f8f9fa;
+  --text: #000000;
+  --card: #ffffff;
+  --border: #000000;
+  --grid: #e5e7eb;
+  --muted: #f1f3f5;
+}
+
+.dark {
+  --bg: #1a1a1a;
+  --text: #f8f9fa;
+  --card: #222222;
+  --border: #ffffff;
+  --grid: #2d2d2d;
+  --muted: #333333;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground font-outfit antialiased selection:bg-brand-yellow selection:text-black;
+    background-image: radial-gradient(var(--grid) 1px, transparent 1px);
+    background-size: 32px 32px;
+    transition:
+      background-color 0.3s ease,
+      color 0.3s ease;
+  }
+}
+
+@utility neo-border {
+  border: 3px solid var(--border);
+}
+
+@utility neo-border-thin {
+  border: 2px solid var(--border);
+}
+
+@utility neo-shadow-sm {
+  box-shadow: 3px 3px 0px 0px var(--border);
+}
+
+@utility neo-shadow {
+  box-shadow: 6px 6px 0px 0px var(--border);
+}
+
+@utility neo-shadow-lg {
+  box-shadow: 10px 10px 0px 0px var(--border);
+}
+
+@utility neo-glow {
+  box-shadow: 0 0 20px rgba(255, 236, 0, 0.4);
+}
+
+/* Custom Component Classes */
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+  .app-container {
+    padding: 2rem;
+  }
+}
+
+.neo-card {
+  @apply neo-border bg-card rounded-2xl transition-all duration-300;
+}
+
+.neo-card:hover {
+  @apply -translate-x-1 -translate-y-1 neo-shadow;
+}
+
+.neo-btn {
+  @apply neo-border-thin px-4 py-2 font-black uppercase text-xs tracking-widest transition-all active:translate-x-0.5 active:translate-y-0.5;
+}
+
+/* Custom scrollbar for Neo-Brutalism - sleek & modern */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #00000030;
+  border-radius: 10px;
+  transition: background 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #00000060;
+}
+
+/* Specific scrollbar for the Commentary Feed (Virtuoso) */
+[data-virtuoso-scroller] {
+  scrollbar-width: thin;
+  scrollbar-color: #ffec00 transparent;
+}
+
+[data-virtuoso-scroller]::-webkit-scrollbar {
+  width: 5px;
+}
+
+[data-virtuoso-scroller]::-webkit-scrollbar-thumb {
+  background: #ffec00; /* Brand Yellow */
+  border-radius: 0;
+  border: 1px solid black;
+}
+
+/* Fix for Sonner stacking/overlapping */
+[data-sonner-toaster] {
+  --toast-width: 380px !important;
+}

@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: sportsbuzz-backend
+    env: node
+    plan: free
+    buildCommand: bun install && bun run build
+    startCommand: bun run start
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: ARCJET_API_KEY
+        sync: false
+      - key: ARCJET_ENV
+        value: LIVE
+      - key: PORT
+        value: 10000
+      - key: HOST
+        value: 0.0.0.0
+      - key: API_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
